@@ -857,7 +857,6 @@ ORDER BY team_size DESC;`
               </div>
               <h1 className="text-xl font-semibold">dData SQL Editor</h1>
             </div>
-            <Badge variant="secondary">Professional database query environment</Badge>
           </div>
           <div className="flex items-center space-x-4">
             {/* Mode Toggles */}
