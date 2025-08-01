@@ -1129,7 +1129,7 @@ SELECT * FROM ${tableName} LIMIT 10;`;
                         </div>
                         <div className="bg-muted p-3 rounded">
                           <div className="text-xs font-medium mb-1">High salary employees</div>
-                          <code className="text-xs">SELECT first_name, last_name, salary FROM employees WHERE salary > 75000;</code>
+                          <code className="text-xs">SELECT first_name, last_name, salary FROM employees WHERE salary &gt; 75000;</code>
                         </div>
                         <div className="bg-muted p-3 rounded">
                           <div className="text-xs font-medium mb-1">Department budgets with employee info</div>
@@ -1139,6 +1139,38 @@ SELECT * FROM ${tableName} LIMIT 10;`;
                     </div>
                   </TabsContent>
                 </Tabs>
+              </DialogContent>
+            </Dialog>
+            
+            <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
+              <DialogTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <Settings className="w-4 h-4 mr-2" />
+                  Settings
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Editor Settings</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">Auto-complete</label>
+                    <Switch defaultChecked />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">Syntax highlighting</label>
+                    <Switch defaultChecked />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">Show line numbers</label>
+                    <Switch />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">Word wrap</label>
+                    <Switch />
+                  </div>
+                </div>
               </DialogContent>
             </Dialog>
           </div>
@@ -1516,7 +1548,7 @@ SELECT * FROM ${tableName} LIMIT 10;`;
                       {sqlQuery.split('').map((char, index) => {
                         const beforeChar = sqlQuery.substring(0, index);
                         const currentWord = beforeChar.split(/\s+/).pop() || '';
-                        const isKeyword = sqlKeywords.some(keyword =>
+                        const isKeyword = sqlKeywords.some(keyword => 
                           keyword.toLowerCase() === currentWord.toLowerCase() && 
                           /\s/.test(sqlQuery[index] || ' ')
                         );
