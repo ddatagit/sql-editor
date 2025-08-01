@@ -54,6 +54,7 @@ import {
 const SQLEditor = () => {
   const { toast } = useToast();
   const [sqlQuery, setSqlQuery] = useState("");
+  const [sqlSyntaxError, setSqlSyntaxError] = useState(null);
 
   const [showComments, setShowComments] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -336,9 +337,62 @@ ORDER BY team_size DESC;`
     }
   };
 
+  const validateSQLSyntax = (query) => {
+    if (!query.trim()) {
+      setSqlSyntaxError(null);
+      return;
+    }
+
+    const lowerQuery = query.toLowerCase().trim();
+    
+    // Basic SQL syntax validation
+    const errors = [];
+    
+    // Check for unmatched parentheses
+    const openParens = (query.match(/\(/g) || []).length;
+    const closeParens = (query.match(/\)/g) || []).length;
+    if (openParens !== closeParens) {
+      errors.push("Unmatched parentheses");
+    }
+    
+    // Check for unmatched quotes
+    const singleQuotes = (query.match(/'/g) || []).length;
+    const doubleQuotes = (query.match(/"/g) || []).length;
+    if (singleQuotes % 2 !== 0) {
+      errors.push("Unmatched single quotes");
+    }
+    if (doubleQuotes % 2 !== 0) {
+      errors.push("Unmatched double quotes");
+    }
+    
+    // Check for basic SQL structure
+    if (!lowerQuery.match(/^(select|show|describe|explain|with)/)) {
+      errors.push("Query should start with SELECT, SHOW, DESCRIBE, EXPLAIN, or WITH");
+    }
+    
+    // Check for common syntax errors
+    if (lowerQuery.includes('select') && !lowerQuery.includes('from') && !lowerQuery.includes('show') && !lowerQuery.includes('describe')) {
+      if (!lowerQuery.match(/select\s+[\d\s\+\-\*\/\(\)'"]+$/)) { // Allow simple calculations
+        errors.push("SELECT statement missing FROM clause");
+      }
+    }
+    
+    if (errors.length > 0) {
+      setSqlSyntaxError({
+        message: errors[0],
+        hasError: true
+      });
+    } else {
+      setSqlSyntaxError(null);
+    }
+  };
+
   const handleEditorInput = (e) => {
     const value = e.target.value;
     setSqlQuery(value);
+    
+    // Validate syntax in real-time
+    validateSQLSyntax(value);
     
     // Auto-complete on typing (like Excel)
     const textarea = e.target as HTMLTextAreaElement;
@@ -1286,27 +1340,6 @@ ORDER BY team_size DESC;`
                     Format
                   </Button>
                   
-                  {/* Quick Save - appears when there's content */}
-                  {sqlQuery.trim() && (
-                    <Button variant="outline" size="sm" onClick={() => {
-                      const quickSave = {
-                        id: Date.now(),
-                        title: `Quick Save ${new Date().toLocaleTimeString()}`,
-                        description: "Quickly saved from editor",
-                        query: sqlQuery,
-                        createdAt: new Date().toISOString(),
-                        quickSaved: true
-                      };
-                      setSavedStatements(prev => [quickSave, ...prev]);
-                      toast({
-                        title: "Quick Saved",
-                        description: "Query saved successfully",
-                      });
-                    }}>
-                      <Save className="w-4 h-4 mr-2" />
-                      Quick Save
-                    </Button>
-                  )}
                   
                   <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
                     <DialogTrigger asChild>
@@ -1396,36 +1429,76 @@ ORDER BY team_size DESC;`
                     className={sqlQuery.trim() ? "bg-success hover:bg-success/90" : ""}
                   >
                     <Play className="w-4 h-4 mr-2" />
-                    {queryRunning ? "Running..." : sqlQuery.trim() ? "Run & Deploy" : "Run SQL"}
+                    {queryRunning ? "Running..." : "Run"}
                   </Button>
                 </div>
               </div>
 
               {/* Code Editor Area */}
-              <Card className="min-h-[300px] overflow-hidden relative">
+              <Card className={`min-h-[300px] overflow-hidden relative ${sqlSyntaxError ? 'border-destructive' : ''}`}>
                 <div className="bg-editor-background border-b px-4 py-2 flex items-center justify-between">
                   <div className="flex items-center space-x-4 text-sm">
-                    <span className="text-editor-comment">-- Advanced SQL Editor with Monaco</span>
+                    {sqlSyntaxError ? (
+                      <div className="flex items-center space-x-2 text-destructive">
+                        <AlertCircle className="w-4 h-4" />
+                        <span>Syntax Error: {sqlSyntaxError.message}</span>
+                      </div>
+                    ) : (
+                      <span className="text-editor-comment">-- Advanced SQL Editor</span>
+                    )}
                   </div>
                   <div className="text-xs text-muted-foreground">
                     Ctrl+Space: Auto-complete • Ctrl+Enter: Run Query
                   </div>
                 </div>
                 <div className="p-4 relative">
-                  <textarea
-                    className="sql-editor-textarea w-full h-64 bg-transparent border-none outline-none resize-none font-mono text-sm leading-relaxed text-editor-foreground placeholder:text-muted-foreground"
-                    value={sqlQuery}
-                    onChange={handleEditorInput}
-                    onKeyDown={handleEditorKeyDown}
-                    placeholder="Type your SQL query here... 
+                  <div className="relative">
+                    {/* Syntax highlighted overlay */}
+                    <div className="absolute inset-0 pointer-events-none z-10 whitespace-pre-wrap break-words font-mono text-sm leading-relaxed overflow-hidden">
+                      {sqlQuery.split('').map((char, index) => {
+                        const beforeChar = sqlQuery.substring(0, index);
+                        const currentWord = beforeChar.split(/\s+/).pop() || '';
+                        const isKeyword = sqlKeywords.some(keyword => 
+                          keyword.toLowerCase() === currentWord.toLowerCase() && 
+                          /\s/.test(sqlQuery[index] || ' ')
+                        );
+                        const isString = beforeChar.split("'").length % 2 === 0;
+                        const isComment = beforeChar.includes('--') && !beforeChar.substring(beforeChar.lastIndexOf('--')).includes('\n');
+                        
+                        return (
+                          <span 
+                            key={index}
+                            className={
+                              isComment ? 'text-muted-foreground' :
+                              isString ? 'text-green-600' :
+                              isKeyword ? 'text-blue-600 font-semibold' :
+                              'text-editor-foreground'
+                            }
+                          >
+                            {char}
+                          </span>
+                        );
+                      })}
+                    </div>
+                    
+                    <textarea
+                      className={`sql-editor-textarea w-full h-64 bg-transparent border-none outline-none resize-none font-mono text-sm leading-relaxed placeholder:text-muted-foreground relative z-20 ${
+                        sqlSyntaxError ? 'text-destructive' : 'text-transparent'
+                      }`}
+                      value={sqlQuery}
+                      onChange={handleEditorInput}
+                      onKeyDown={handleEditorKeyDown}
+                      placeholder="Type your SQL query here... 
 
 Examples:
 SELECT * FROM employees WHERE salary > 75000;
 SELECT e.first_name, e.last_name, d.name FROM employees e JOIN departments d ON e.department = d.name;
 SHOW TABLES;
 DESCRIBE employees;"
-                    spellCheck={false}
-                  />
+                      spellCheck={false}
+                      style={{ caretColor: sqlSyntaxError ? 'red' : 'currentColor' }}
+                    />
+                  </div>
                   
                   {/* Live typing indicator */}
                   <div className="absolute bottom-2 right-2 text-xs text-muted-foreground">
