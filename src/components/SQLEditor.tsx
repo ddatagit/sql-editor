@@ -1101,7 +1101,7 @@ SELECT * FROM ${tableName} LIMIT 10;`;
                         </div>
                         <div className="bg-muted p-3 rounded">
                           <code className="text-sm">AVG(column)</code>
-                          <p className="text-xs text-muted-foreground mt-1">Average value</p>
+                          <p className="text-xs text-muted-foreground mt-1">Average values</p>
                         </div>
                         <div className="bg-muted p-3 rounded">
                           <code className="text-sm">MAX(column)</code>
@@ -1121,165 +1121,20 @@ SELECT * FROM ${tableName} LIMIT 10;`;
                   
                   <TabsContent value="examples" className="space-y-4 mt-4">
                     <div className="space-y-4">
-                      <h4 className="text-sm font-medium">Ready-to-Use Examples</h4>
+                      <h4 className="text-sm font-medium">Example Queries</h4>
                       <div className="space-y-3">
                         <div className="bg-muted p-3 rounded">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium">High Salary Employees</span>
-                            <Button size="sm" variant="ghost" onClick={() => {
-                              setSqlQuery("SELECT first_name, last_name, salary FROM employees WHERE salary > 75000 ORDER BY salary DESC;");
-                              setShowSQLHelp(false);
-                            }}>Use</Button>
-                          </div>
-                          <code className="text-xs">SELECT first_name, last_name, salary FROM employees WHERE salary &gt; 75000 ORDER BY salary DESC;</code>
+                          <div className="text-xs font-medium mb-1">Employee count by department</div>
+                          <code className="text-xs">SELECT department, COUNT(*) FROM employees GROUP BY department;</code>
                         </div>
                         <div className="bg-muted p-3 rounded">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium">Department Summary</span>
-                            <Button size="sm" variant="ghost" onClick={() => {
-                              setSqlQuery("SELECT department, COUNT(*) as employee_count, AVG(salary) as avg_salary FROM employees GROUP BY department;");
-                              setShowSQLHelp(false);
-                            }}>Use</Button>
-                          </div>
-                          <code className="text-xs">SELECT department, COUNT(*) as employee_count, AVG(salary) as avg_salary FROM employees GROUP BY department;</code>
+                          <div className="text-xs font-medium mb-1">High salary employees</div>
+                          <code className="text-xs">SELECT first_name, last_name, salary FROM employees WHERE salary > 75000;</code>
                         </div>
                         <div className="bg-muted p-3 rounded">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium">Employee with Department Info</span>
-                            <Button size="sm" variant="ghost" onClick={() => {
-                              setSqlQuery("SELECT e.first_name, e.last_name, e.salary, d.name as department, d.budget FROM employees e JOIN departments d ON e.department = d.name;");
-                              setShowSQLHelp(false);
-                            }}>Use</Button>
-                          </div>
-                          <code className="text-xs">SELECT e.first_name, e.last_name, e.salary, d.name as department, d.budget FROM employees e JOIN departments d ON e.department = d.name;</code>
+                          <div className="text-xs font-medium mb-1">Department budgets with employee info</div>
+                          <code className="text-xs">SELECT d.name, d.budget, COUNT(e.employee_id) as employees FROM departments d LEFT JOIN employees e ON d.name = e.department GROUP BY d.name;</code>
                         </div>
-                      </div>
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              </DialogContent>
-            </Dialog>
-
-            <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
-              <DialogTrigger asChild>
-                <Button variant="ghost" size="sm">
-                  <Settings className="w-4 h-4" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>Settings</DialogTitle>
-                </DialogHeader>
-                <Tabs defaultValue="general" className="w-full">
-                  <TabsList className="grid w-full grid-cols-4">
-                    <TabsTrigger value="general">General</TabsTrigger>
-                    <TabsTrigger value="editor">Editor</TabsTrigger>
-                    <TabsTrigger value="security">Security</TabsTrigger>
-                    <TabsTrigger value="notifications">Alerts</TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="general" className="space-y-4 mt-4">
-                    <div className="space-y-4">
-                      <h4 className="text-sm font-medium">Theme & Display</h4>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <Palette className="w-4 h-4" />
-                          <span className="text-sm">Dark Mode</span>
-                        </div>
-                        <Switch checked={darkMode} onCheckedChange={setDarkMode} />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <Monitor className="w-4 h-4" />
-                          <span className="text-sm">Business Mode</span>
-                        </div>
-                        <Switch checked={businessMode} onCheckedChange={setBusinessMode} />
-                      </div>
-                    </div>
-                    <Separator />
-                    <div className="space-y-4">
-                      <h4 className="text-sm font-medium">Auto-save Settings</h4>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Auto-save interval</span>
-                        <Select defaultValue="5">
-                          <SelectTrigger className="w-20">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="1">1m</SelectItem>
-                            <SelectItem value="5">5m</SelectItem>
-                            <SelectItem value="10">10m</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </TabsContent>
-                  
-                  <TabsContent value="editor" className="space-y-4 mt-4">
-                    <div className="space-y-4">
-                      <h4 className="text-sm font-medium">Code Editor</h4>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Font size</span>
-                        <Select defaultValue="14">
-                          <SelectTrigger className="w-20">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="12">12px</SelectItem>
-                            <SelectItem value="14">14px</SelectItem>
-                            <SelectItem value="16">16px</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Auto-completion</span>
-                        <Switch defaultChecked />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Syntax highlighting</span>
-                        <Switch defaultChecked />
-                      </div>
-                    </div>
-                  </TabsContent>
-                  
-                  <TabsContent value="security" className="space-y-4 mt-4">
-                    <div className="space-y-4">
-                      <div className="flex items-center space-x-2">
-                        <Shield className="w-4 h-4" />
-                        <h4 className="text-sm font-medium">Query Permissions</h4>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Allow DELETE operations</span>
-                        <Switch />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Allow DROP operations</span>
-                        <Switch />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Require approval for production queries</span>
-                        <Switch defaultChecked />
-                      </div>
-                    </div>
-                  </TabsContent>
-                  
-                  <TabsContent value="notifications" className="space-y-4 mt-4">
-                    <div className="space-y-4">
-                      <div className="flex items-center space-x-2">
-                        <Bell className="w-4 h-4" />
-                        <h4 className="text-sm font-medium">Notification Settings</h4>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Query completion alerts</span>
-                        <Switch defaultChecked />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Collaboration notifications</span>
-                        <Switch defaultChecked />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Error notifications</span>
-                        <Switch defaultChecked />
                       </div>
                     </div>
                   </TabsContent>
@@ -1290,18 +1145,18 @@ SELECT * FROM ${tableName} LIMIT 10;`;
         </div>
       </header>
 
-      <div className="flex h-[calc(100vh-73px)]">
+      <div className="flex h-[calc(100vh-80px)]">
         {/* Sidebar */}
         <div className="w-80 border-r bg-card/50 flex flex-col">
-          {/* Prebuilt Reports - Only show in Business Mode */}
+          {/* Business Mode Section */}
           {businessMode && (
-            <div className="p-4 border-b bg-gradient-to-r from-primary/5 to-primary/10">
+            <div className="p-4 border-b">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-medium flex items-center">
-                  <Building2 className="w-4 h-4 mr-2 text-primary" />
+                  <Building2 className="w-4 h-4 mr-2" />
                   Prebuilt Reports
                 </h3>
-                <Badge variant="secondary" className="text-xs bg-primary/20 text-primary">
+                <Badge variant="secondary" className="text-xs">
                   Business
                 </Badge>
               </div>
@@ -1310,23 +1165,27 @@ SELECT * FROM ${tableName} LIMIT 10;`;
                   {prebuiltReports.map((report) => (
                     <Card 
                       key={report.id} 
-                      className="p-3 cursor-pointer hover:bg-primary/5 transition-colors border-primary/20"
+                      className="p-3 cursor-pointer hover:bg-accent/50 transition-colors"
                       onClick={() => handleRunPrebuiltReport(report)}
                     >
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1">
-                          <h4 className="text-sm font-medium mb-1">{report.title}</h4>
-                          <p className="text-xs text-muted-foreground mb-2">{report.description}</p>
-                          <div className="flex items-center space-x-2">
-                            <Badge variant="outline" className="text-xs px-1.5 py-0.5">
-                              {report.category}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">{report.lastRun}</span>
-                          </div>
+                      <div className="space-y-2">
+                        <div className="flex items-start justify-between">
+                          <h4 className="text-sm font-medium leading-tight">{report.title}</h4>
+                          <Badge variant="outline" className="text-xs ml-2 flex-shrink-0">
+                            {report.category}
+                          </Badge>
                         </div>
-                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
-                          <Play className="w-3 h-3" />
-                        </Button>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          {report.description}
+                        </p>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-muted-foreground">
+                            Last run: {report.lastRun}
+                          </span>
+                          <Button size="sm" variant="ghost" className="h-6 px-2 text-xs">
+                            Load
+                          </Button>
+                        </div>
                       </div>
                     </Card>
                   ))}
@@ -1336,7 +1195,7 @@ SELECT * FROM ${tableName} LIMIT 10;`;
           )}
 
           {/* Saved Statements */}
-          <div className="p-4 border-b">
+          <div className="flex-1 p-4 border-b">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-medium flex items-center">
                 <FileText className="w-4 h-4 mr-2" />
@@ -1378,107 +1237,6 @@ SELECT * FROM ${tableName} LIMIT 10;`;
                         Add Statement
                       </Button>
                     </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-              
-              <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Upload className="w-4 h-4 mr-2" />
-                    Upload Database
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>Upload Database Files</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
-                      <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                      <h3 className="text-lg font-medium mb-2">Upload your database files</h3>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Supports .sql, .csv, and .json files
-                      </p>
-                      <input
-                        type="file"
-                        multiple
-                        accept=".sql,.csv,.json"
-                        onChange={handleFileUpload}
-                        className="hidden"
-                        id="file-upload"
-                      />
-                      <label htmlFor="file-upload">
-                        <Button asChild>
-                          <span>Select Files</span>
-                        </Button>
-                      </label>
-                    </div>
-                    
-                    {isUploading && (
-                      <div className="space-y-2">
-                        <div className="flex items-center space-x-2">
-                          <RefreshCw className="w-4 h-4 animate-spin" />
-                          <span className="text-sm">Processing files...</span>
-                        </div>
-                        <div className="w-full bg-muted rounded-full h-2">
-                          <div 
-                            className="bg-primary h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${uploadProgress}%` }}
-                          />
-                        </div>
-                      </div>
-                    )}
-                    
-                    {uploadedFiles.length > 0 && (
-                      <div className="space-y-3">
-                        <h4 className="text-sm font-medium">Uploaded Files</h4>
-                        <ScrollArea className="h-48">
-                          <div className="space-y-2">
-                            {uploadedFiles.map((file) => (
-                              <Card key={file.id} className="p-3">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center space-x-3">
-                                    {file.type === 'sql' && <File className="w-4 h-4 text-blue-500" />}
-                                    {file.type === 'csv' && <FileSpreadsheet className="w-4 h-4 text-green-500" />}
-                                    {file.type === 'json' && <FileText className="w-4 h-4 text-orange-500" />}
-                                    <div>
-                                      <p className="text-sm font-medium">{file.name}</p>
-                                      <p className="text-xs text-muted-foreground">
-                                        {(file.size / 1024).toFixed(1)} KB • {file.type.toUpperCase()}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center space-x-2">
-                                    {file.type === 'csv' && (
-                                      <Button 
-                                        size="sm" 
-                                        variant="outline"
-                                        onClick={() => generateTableFromCSV(file)}
-                                      >
-                                        Generate SQL
-                                      </Button>
-                                    )}
-                                    {file.type === 'sql' && (
-                                      <Button 
-                                        size="sm" 
-                                        variant="outline"
-                                        onClick={() => {
-                                          setSqlQuery(file.content);
-                                          setShowUploadDialog(false);
-                                        }}
-                                      >
-                                        Load SQL
-                                      </Button>
-                                    )}
-                                  </div>
-                                </div>
-                              </Card>
-                            ))}
-                          </div>
-                        </ScrollArea>
-                      </div>
-                    )}
                   </div>
                 </DialogContent>
               </Dialog>
@@ -1535,11 +1293,111 @@ SELECT * FROM ${tableName} LIMIT 10;`;
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-medium">SQL Query Editor</h2>
                 <div className="flex items-center space-x-2">
+                  <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <Upload className="w-4 h-4 mr-2" />
+                        Upload Database
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-2xl">
+                      <DialogHeader>
+                        <DialogTitle>Upload Database Files</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
+                          <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                          <h3 className="text-lg font-medium mb-2">Upload your database files</h3>
+                          <p className="text-sm text-muted-foreground mb-4">
+                            Supports .sql, .csv, and .json files
+                          </p>
+                          <input
+                            type="file"
+                            multiple
+                            accept=".sql,.csv,.json"
+                            onChange={handleFileUpload}
+                            className="hidden"
+                            id="file-upload"
+                          />
+                          <label htmlFor="file-upload">
+                            <Button asChild>
+                              <span>Select Files</span>
+                            </Button>
+                          </label>
+                        </div>
+                        
+                        {isUploading && (
+                          <div className="space-y-2">
+                            <div className="flex items-center space-x-2">
+                              <RefreshCw className="w-4 h-4 animate-spin" />
+                              <span className="text-sm">Processing files...</span>
+                            </div>
+                            <div className="w-full bg-muted rounded-full h-2">
+                              <div 
+                                className="bg-primary h-2 rounded-full transition-all duration-300"
+                                style={{ width: `${uploadProgress}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                        
+                        {uploadedFiles.length > 0 && (
+                          <div className="space-y-3">
+                            <h4 className="text-sm font-medium">Uploaded Files</h4>
+                            <ScrollArea className="h-48">
+                              <div className="space-y-2">
+                                {uploadedFiles.map((file) => (
+                                  <Card key={file.id} className="p-3">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center space-x-3">
+                                        {file.type === 'sql' && <File className="w-4 h-4 text-blue-500" />}
+                                        {file.type === 'csv' && <FileSpreadsheet className="w-4 h-4 text-green-500" />}
+                                        {file.type === 'json' && <FileText className="w-4 h-4 text-orange-500" />}
+                                        <div>
+                                          <p className="text-sm font-medium">{file.name}</p>
+                                          <p className="text-xs text-muted-foreground">
+                                            {(file.size / 1024).toFixed(1)} KB • {file.type.toUpperCase()}
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center space-x-2">
+                                        {file.type === 'csv' && (
+                                          <Button 
+                                            size="sm" 
+                                            variant="outline"
+                                            onClick={() => generateTableFromCSV(file)}
+                                          >
+                                            Generate SQL
+                                          </Button>
+                                        )}
+                                        {file.type === 'sql' && (
+                                          <Button 
+                                            size="sm" 
+                                            variant="outline"
+                                            onClick={() => {
+                                              setSqlQuery(file.content);
+                                              setShowUploadDialog(false);
+                                            }}
+                                          >
+                                            Load SQL
+                                          </Button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </Card>
+                                ))}
+                              </div>
+                            </ScrollArea>
+                          </div>
+                        )}
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                  
                   <Button variant="outline" size="sm" onClick={handleFormatQuery}>
                     <Code className="w-4 h-4 mr-2" />
                     Format
                   </Button>
-                  
                   
                   <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
                     <DialogTrigger asChild>
@@ -1658,7 +1516,7 @@ SELECT * FROM ${tableName} LIMIT 10;`;
                       {sqlQuery.split('').map((char, index) => {
                         const beforeChar = sqlQuery.substring(0, index);
                         const currentWord = beforeChar.split(/\s+/).pop() || '';
-                        const isKeyword = sqlKeywords.some(keyword => 
+                        const isKeyword = sqlKeywords.some(keyword =>
                           keyword.toLowerCase() === currentWord.toLowerCase() && 
                           /\s/.test(sqlQuery[index] || ' ')
                         );
@@ -1820,47 +1678,46 @@ DESCRIBE employees;"
                   ) : queryResults ? (
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2 text-success">
-                          <CheckCircle className="w-5 h-5" />
-                          <h4 className="font-medium">Query Successful</h4>
+                        <div className="flex items-center space-x-2">
+                          <CheckCircle className="w-5 h-5 text-success" />
+                          <span className="font-medium">Query executed successfully</span>
                         </div>
-                        <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                          <span>{queryResults.rowCount} rows</span>
-                          <span>{queryResults.executionTime}</span>
+                        <div className="text-sm text-muted-foreground">
+                          {queryResults.rowCount} rows • {queryResults.executionTime}
                         </div>
                       </div>
                       
                       <div className="border rounded-lg overflow-hidden">
-                        <div className="bg-muted/50 border-b">
-                          <div className="grid grid-cols-4 gap-4 p-3 text-sm font-medium">
-                            {queryResults.columns.map((col) => (
-                              <div key={col} className="truncate">{col}</div>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="max-h-64 overflow-y-auto">
-                          {queryResults.rows.map((row, idx) => (
-                            <div key={idx} className="grid grid-cols-4 gap-4 p-3 text-sm border-b last:border-b-0 hover:bg-muted/30">
-                              {row.map((cell, cellIdx) => (
-                                <div key={cellIdx} className="truncate">{cell}</div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead className="bg-muted/50">
+                              <tr>
+                                {queryResults.columns.map((column, index) => (
+                                  <th key={index} className="px-4 py-2 text-left text-sm font-medium">
+                                    {column}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {queryResults.rows.map((row, rowIndex) => (
+                                <tr key={rowIndex} className="border-t">
+                                  {row.map((cell, cellIndex) => (
+                                    <td key={cellIndex} className="px-4 py-2 text-sm">
+                                      {cell}
+                                    </td>
+                                  ))}
+                                </tr>
                               ))}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                      
-                      <div className="bg-success/10 border border-success/20 rounded-lg p-3">
-                        <div className="flex items-center space-x-2 text-success text-sm">
-                          <Check className="w-4 h-4" />
-                          <span>Query executed successfully. Data retrieved from employees and departments tables.</span>
+                            </tbody>
+                          </table>
                         </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="text-center text-muted-foreground py-8">
+                    <div className="text-center py-8 text-muted-foreground">
                       <Database className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                      <p>Run a SQL query to see results here</p>
-                      <p className="text-sm mt-1">Tip: Press Ctrl+Enter to run the query</p>
+                      <p>No query results yet. Run a SQL query to see results here.</p>
                     </div>
                   )}
                 </div>
@@ -1869,94 +1726,69 @@ DESCRIBE employees;"
           </div>
         </div>
 
-        {/* Right Panel - Comments */}
-        <div className="w-80 border-l bg-card/50 flex flex-col">
-          <div className="p-4 border-b">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-medium flex items-center">
-                <MessageCircle className="w-4 h-4 mr-2" />
-                Comments & Discussion
-              </h3>
-              {showComments && (
-                <Badge variant="secondary" className="text-xs">
-                  {comments.length}
-                </Badge>
-              )}
+        {/* Comments Panel */}
+        {showComments && (
+          <div className="w-80 border-l bg-card/50 flex flex-col">
+            <div className="p-4 border-b">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium flex items-center">
+                  <MessageCircle className="w-4 h-4 mr-2" />
+                  Query Comments
+                </h3>
+                <Button variant="ghost" size="sm" onClick={() => setShowComments(false)}>
+                  <XCircle className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
             
-            {showComments && (
+            <ScrollArea className="flex-1 p-4">
+              <div className="space-y-4">
+                {comments.map((comment) => (
+                  <Card key={comment.id} className="p-3">
+                    <div className="flex items-start space-x-3">
+                      <Avatar className="w-6 h-6">
+                        <AvatarFallback className="text-xs">
+                          {comment.author.split(' ').map(n => n[0]).join('')}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 space-y-1">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm font-medium">{comment.author}</span>
+                          <span className="text-xs text-muted-foreground">{comment.time}</span>
+                          {comment.type === 'approval' && (
+                            <Badge variant="default" className="text-xs">Approved</Badge>
+                          )}
+                          {comment.type === 'suggestion' && (
+                            <Badge variant="secondary" className="text-xs">Suggestion</Badge>
+                          )}
+                          {comment.type === 'system' && (
+                            <Badge variant="outline" className="text-xs">System</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">{comment.content}</p>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </ScrollArea>
+            
+            <div className="p-4 border-t">
               <div className="flex space-x-2">
-                <Input
+                <Textarea
                   placeholder="Add a comment..."
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
-                  className="text-sm"
-                  onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}
+                  rows={2}
+                  className="flex-1"
                 />
                 <Button size="sm" onClick={handleAddComment} disabled={!newComment.trim()}>
                   <Send className="w-4 h-4" />
                 </Button>
               </div>
-            )}
+            </div>
           </div>
-
-          <div className="flex-1 p-4">
-            {showComments ? (
-              <ScrollArea className="h-full">
-                <div className="space-y-4">
-                  {comments.map((comment) => (
-                    <Card key={comment.id} className="p-3">
-                      <div className="flex items-start space-x-3">
-                        <Avatar className="w-8 h-8">
-                          <AvatarFallback className="text-xs">
-                            {comment.author.split(' ').map(n => n[0]).join('')}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2 mb-1">
-                            <span className="text-sm font-medium">{comment.author}</span>
-                            <Badge 
-                              variant={
-                                comment.type === 'approval' ? 'secondary' : 
-                                comment.type === 'suggestion' ? 'outline' :
-                                comment.type === 'system' ? 'secondary' :
-                                'outline'
-                              } 
-                              className={`text-xs ${
-                                comment.type === 'approval' ? 'bg-success text-success-foreground' :
-                                comment.type === 'suggestion' ? 'bg-warning text-warning-foreground border-warning' :
-                                ''
-                              }`}
-                            >
-                              {comment.type}
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-muted-foreground mb-2">
-                            {comment.content}
-                          </p>
-                          <div className="flex items-center text-xs text-muted-foreground">
-                            <Clock className="w-3 h-3 mr-1" />
-                            {comment.time}
-                          </div>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              </ScrollArea>
-            ) : (
-              <Card>
-                <div className="p-4">
-                  <div className="text-center text-muted-foreground py-8">
-                    <MessageCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p className="mb-2">No comments yet</p>
-                    <p className="text-sm">Save a statement or run a query to start discussing</p>
-                  </div>
-                </div>
-              </Card>
-            )}
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
