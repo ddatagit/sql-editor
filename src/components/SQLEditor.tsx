@@ -502,56 +502,142 @@ ORDER BY avg_salary DESC;`
     setQueryError(null);
     setQueryResults(null);
     
+    // Auto-save the query before running (optional)
+    if (sqlQuery.trim() && queryTitle) {
+      const autoSaveStatement = {
+        id: Date.now(),
+        title: queryTitle || `Auto-saved Query ${new Date().toLocaleTimeString()}`,
+        description: "Auto-saved before execution",
+        query: sqlQuery,
+        createdAt: new Date().toISOString(),
+        autoSaved: true
+      };
+      setSavedStatements(prev => [autoSaveStatement, ...prev]);
+    }
+    
     // Simulate query execution with realistic success/error scenarios
     setTimeout(() => {
       setQueryRunning(false);
       
-      // Simple query validation
-      const query = sqlQuery.toLowerCase();
+      // Enhanced query validation based on actual typed content
+      const query = sqlQuery.toLowerCase().trim();
+      
+      if (!query) {
+        setQueryError({
+          type: "error",
+          message: "Empty query",
+          suggestion: "Please enter a SQL statement to execute",
+          line: 1
+        });
+        toast({
+          title: "No Query",
+          description: "Please enter a SQL statement to run",
+          variant: "destructive"
+        });
+        return;
+      }
+      
       if (query.includes('drop') || query.includes('delete') || query.includes('truncate')) {
         // Error case - dangerous operations
         setQueryError({
           type: "error",
           message: "Dangerous operation detected",
-          suggestion: "Consider using SELECT statements for data exploration",
+          suggestion: "Consider using SELECT statements for data exploration. Use WITH caution for destructive operations.",
+          line: query.split('\n').findIndex(line => 
+            line.toLowerCase().includes('drop') || 
+            line.toLowerCase().includes('delete') || 
+            line.toLowerCase().includes('truncate')
+          ) + 1
+        });
+        toast({
+          title: "Query Blocked",
+          description: "Dangerous operation detected - query execution halted",
+          variant: "destructive"
+        });
+      } else if (!query.includes('select') && !query.includes('show') && !query.includes('describe')) {
+        // Error case - invalid syntax
+        setQueryError({
+          type: "error", 
+          message: "Invalid SQL syntax or unsupported operation",
+          suggestion: "Query should start with SELECT, SHOW, or DESCRIBE keywords for data retrieval",
           line: 1
         });
         toast({
-          title: "Query Error",
-          description: "Dangerous operation detected in query",
-          variant: "destructive"
-        });
-      } else if (!query.includes('select')) {
-        // Error case - missing SELECT
-        setQueryError({
-          type: "error", 
-          message: "Invalid SQL syntax",
-          suggestion: "Query should start with SELECT keyword",
-          line: 4
-        });
-        toast({
           title: "Syntax Error",
-          description: "Query validation failed",
+          description: "Query validation failed - check your SQL syntax",
           variant: "destructive"
         });
       } else {
-        // Success case
-        setQueryResults({
-          columns: ["first_name", "last_name", "department", "salary"],
-          rows: [
-            ["John", "Doe", "Engineering", "85000"],
-            ["Jane", "Smith", "Marketing", "78000"],
-            ["Bob", "Johnson", "Sales", "82000"],
-            ["Alice", "Wilson", "Engineering", "90000"],
-            ["Tom", "Brown", "Finance", "76000"]
-          ],
-          executionTime: "247ms",
-          rowCount: 5
-        });
+        // Success case - simulate realistic results based on query content
+        let mockResults;
+        
+        if (query.includes('employees') && query.includes('departments')) {
+          mockResults = {
+            columns: ["first_name", "last_name", "department", "salary", "department_budget"],
+            rows: [
+              ["John", "Doe", "Engineering", "85000", "500000"],
+              ["Jane", "Smith", "Marketing", "78000", "300000"],
+              ["Bob", "Johnson", "Sales", "82000", "400000"],
+              ["Alice", "Wilson", "Engineering", "90000", "500000"],
+              ["Tom", "Brown", "Finance", "76000", "250000"]
+            ],
+            executionTime: "247ms",
+            rowCount: 5
+          };
+        } else if (query.includes('employees')) {
+          mockResults = {
+            columns: ["employee_id", "first_name", "last_name", "department", "salary"],
+            rows: [
+              ["1", "John", "Doe", "Engineering", "85000"],
+              ["2", "Jane", "Smith", "Marketing", "78000"],
+              ["3", "Bob", "Johnson", "Sales", "82000"],
+              ["4", "Alice", "Wilson", "Engineering", "90000"],
+              ["5", "Tom", "Brown", "Finance", "76000"],
+              ["6", "Sarah", "Davis", "HR", "72000"],
+              ["7", "Mike", "Miller", "IT", "88000"]
+            ],
+            executionTime: "156ms",
+            rowCount: 7
+          };
+        } else if (query.includes('departments')) {
+          mockResults = {
+            columns: ["department_id", "name", "budget"],
+            rows: [
+              ["1", "Engineering", "500000"],
+              ["2", "Marketing", "300000"],
+              ["3", "Sales", "400000"],
+              ["4", "Finance", "250000"],
+              ["5", "HR", "180000"],
+              ["6", "IT", "350000"]
+            ],
+            executionTime: "89ms",
+            rowCount: 6
+          };
+        } else {
+          // Generic result for other queries
+          mockResults = {
+            columns: ["result"],
+            rows: [["Query executed successfully"]],
+            executionTime: "45ms",
+            rowCount: 1
+          };
+        }
+        
+        setQueryResults(mockResults);
         toast({
           title: "Query Executed Successfully",
-          description: `Returned ${5} rows in 247ms`,
+          description: `Returned ${mockResults.rowCount} rows in ${mockResults.executionTime}`,
         });
+        
+        // Add execution comment
+        const executionComment = {
+          id: comments.length + 1,
+          author: "System",
+          time: "Just now",
+          content: `Query executed successfully. Retrieved ${mockResults.rowCount} rows in ${mockResults.executionTime}.`,
+          type: "system"
+        };
+        setComments([executionComment, ...comments]);
       }
     }, 1500);
   };
@@ -983,6 +1069,28 @@ ORDER BY avg_salary DESC;`
                     Format
                   </Button>
                   
+                  {/* Quick Save - appears when there's content */}
+                  {sqlQuery.trim() && (
+                    <Button variant="outline" size="sm" onClick={() => {
+                      const quickSave = {
+                        id: Date.now(),
+                        title: `Quick Save ${new Date().toLocaleTimeString()}`,
+                        description: "Quickly saved from editor",
+                        query: sqlQuery,
+                        createdAt: new Date().toISOString(),
+                        quickSaved: true
+                      };
+                      setSavedStatements(prev => [quickSave, ...prev]);
+                      toast({
+                        title: "Quick Saved",
+                        description: "Query saved successfully",
+                      });
+                    }}>
+                      <Save className="w-4 h-4 mr-2" />
+                      Quick Save
+                    </Button>
+                  )}
+                  
                   <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
                     <DialogTrigger asChild>
                       <Button variant="outline" size="sm" onClick={handleSaveQuery}>
@@ -1064,9 +1172,14 @@ ORDER BY avg_salary DESC;`
                     </DialogContent>
                   </Dialog>
 
-                  <Button size="sm" onClick={handleRunQuery} disabled={queryRunning}>
+                  <Button 
+                    size="sm" 
+                    onClick={handleRunQuery} 
+                    disabled={queryRunning || !sqlQuery.trim()}
+                    className={sqlQuery.trim() ? "bg-success hover:bg-success/90" : ""}
+                  >
                     <Play className="w-4 h-4 mr-2" />
-                    {queryRunning ? "Running..." : "Run SQL"}
+                    {queryRunning ? "Running..." : sqlQuery.trim() ? "Run & Deploy" : "Run SQL"}
                   </Button>
                 </div>
               </div>
@@ -1083,12 +1196,24 @@ ORDER BY avg_salary DESC;`
                 </div>
                 <div className="p-4 relative">
                   <textarea
-                    className="sql-editor-textarea w-full h-64 bg-transparent border-none outline-none resize-none font-mono text-sm"
+                    className="sql-editor-textarea w-full h-64 bg-transparent border-none outline-none resize-none font-mono text-sm leading-relaxed text-editor-foreground placeholder:text-muted-foreground"
                     value={sqlQuery}
                     onChange={(e) => setSqlQuery(e.target.value)}
                     onKeyDown={handleEditorKeyDown}
-                    placeholder="Enter your SQL query here..."
+                    placeholder="Type your SQL query here... 
+
+Examples:
+SELECT * FROM employees WHERE salary > 75000;
+SELECT e.first_name, e.last_name, d.name FROM employees e JOIN departments d ON e.department = d.name;
+SHOW TABLES;
+DESCRIBE employees;"
+                    spellCheck={false}
                   />
+                  
+                  {/* Live typing indicator */}
+                  <div className="absolute bottom-2 right-2 text-xs text-muted-foreground">
+                    {sqlQuery.trim() ? `${sqlQuery.split('\n').length} lines • ${sqlQuery.length} chars` : 'Start typing...'}
+                  </div>
                   
                   {/* Auto-complete popup */}
                   {showAutoComplete && (
