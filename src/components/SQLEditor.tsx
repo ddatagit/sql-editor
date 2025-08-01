@@ -54,16 +54,7 @@ const SQLEditor = () => {
   const [sqlQuery, setSqlQuery] = useState(`-- Advanced SQL Editor with Monaco
 -- Features: Syntax highlighting, auto-completion, formatting
 
-SELECT 
-    e.first_name,
-    e.last_name,
-    e.department,
-    e.salary,
-    d.budget as department_budget
-FROM employees e
-LEFT JOIN departments d ON e.department = d.name
-WHERE e.salary > 75000
-ORDER BY e.salary DESC;`);
+SELECT e.first_name,e.last_name,e.department,e.salary,d.budget as department_budget FROM employees e LEFT JOIN departments d ON e.department = d.name WHERE e.salary > 75000 ORDER BY e.salary DESC;`);
 
   const [showComments, setShowComments] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -256,24 +247,88 @@ ORDER BY avg_salary DESC;`
   };
 
   const handleFormatQuery = () => {
-    // Format the SQL query
-    const formatted = sqlQuery
-      .replace(/SELECT/gi, 'SELECT')
-      .replace(/FROM/gi, '\nFROM')
-      .replace(/WHERE/gi, '\nWHERE')
-      .replace(/ORDER BY/gi, '\nORDER BY')
-      .replace(/LEFT JOIN/gi, '\nLEFT JOIN')
-      .replace(/INNER JOIN/gi, '\nINNER JOIN')
-      .replace(/GROUP BY/gi, '\nGROUP BY')
-      .replace(/HAVING/gi, '\nHAVING')
-      .replace(/,\s*/g, ',\n    ')
+    // Advanced SQL formatting from messy to clean
+    let formatted = sqlQuery
+      // Remove extra whitespace and normalize
       .replace(/\s+/g, ' ')
-      .trim();
+      .trim()
+      
+      // Format SELECT statements
+      .replace(/SELECT\s+/gi, 'SELECT\n    ')
+      .replace(/,\s*(?=\w)/g, ',\n    ')
+      
+      // Format FROM clause
+      .replace(/\s+FROM\s+/gi, '\nFROM ')
+      
+      // Format JOIN clauses
+      .replace(/\s+(LEFT\s+JOIN|RIGHT\s+JOIN|INNER\s+JOIN|FULL\s+JOIN|JOIN)\s+/gi, '\n$1 ')
+      .replace(/\s+ON\s+/gi, '\n    ON ')
+      
+      // Format WHERE clause
+      .replace(/\s+WHERE\s+/gi, '\nWHERE ')
+      .replace(/\s+(AND|OR)\s+/gi, '\n    $1 ')
+      
+      // Format GROUP BY
+      .replace(/\s+GROUP\s+BY\s+/gi, '\nGROUP BY ')
+      
+      // Format HAVING
+      .replace(/\s+HAVING\s+/gi, '\nHAVING ')
+      
+      // Format ORDER BY
+      .replace(/\s+ORDER\s+BY\s+/gi, '\nORDER BY ')
+      
+      // Format LIMIT
+      .replace(/\s+LIMIT\s+/gi, '\nLIMIT ')
+      
+      // Format subqueries
+      .replace(/\(\s*SELECT/gi, '(\n    SELECT')
+      .replace(/\)\s*(?=FROM|WHERE|ORDER|GROUP|HAVING|LIMIT|\)|;|$)/gi, '\n)')
+      
+      // Clean up extra spaces and ensure proper line endings
+      .replace(/\n\s*\n/g, '\n')
+      .replace(/^\s+/gm, (match) => {
+        const level = Math.floor(match.length / 4);
+        return '    '.repeat(level);
+      });
+
+    // Add proper indentation for nested queries
+    const lines = formatted.split('\n');
+    let indentLevel = 0;
+    const formattedLines = lines.map(line => {
+      const trimmed = line.trim();
+      
+      if (trimmed.includes('(')) indentLevel++;
+      if (trimmed.includes(')')) indentLevel = Math.max(0, indentLevel - 1);
+      
+      if (trimmed.startsWith('SELECT') || 
+          trimmed.startsWith('FROM') || 
+          trimmed.startsWith('WHERE') || 
+          trimmed.startsWith('GROUP BY') || 
+          trimmed.startsWith('HAVING') || 
+          trimmed.startsWith('ORDER BY') || 
+          trimmed.startsWith('LIMIT')) {
+        return '    '.repeat(indentLevel) + trimmed;
+      } else if (trimmed.startsWith('LEFT JOIN') || 
+                 trimmed.startsWith('RIGHT JOIN') || 
+                 trimmed.startsWith('INNER JOIN') || 
+                 trimmed.startsWith('FULL JOIN') || 
+                 trimmed.startsWith('JOIN') || 
+                 trimmed.startsWith('ON') || 
+                 trimmed.startsWith('AND') || 
+                 trimmed.startsWith('OR')) {
+        return '    '.repeat(indentLevel + 1) + trimmed;
+      } else if (trimmed.length > 0) {
+        return '    '.repeat(indentLevel + 1) + trimmed;
+      }
+      return '';
+    });
+
+    const finalFormatted = formattedLines.join('\n').replace(/\n\s*\n/g, '\n');
     
-    setSqlQuery(formatted);
+    setSqlQuery(finalFormatted);
     toast({
       title: "Query Formatted",
-      description: "SQL statement has been formatted successfully",
+      description: "SQL statement has been formatted and beautified",
     });
   };
 
