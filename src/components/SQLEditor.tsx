@@ -186,6 +186,22 @@ ORDER BY e.hire_date DESC;`
 FROM employees e
 GROUP BY e.department
 ORDER BY avg_salary DESC;`
+    },
+    {
+      id: 5,
+      title: "Project Status Overview",
+      description: "Active projects and completion timeline",
+      category: "Operations",
+      lastRun: "6 hours ago",
+      query: `SELECT 
+    p.name as project_name,
+    p.description,
+    COUNT(e.employee_id) as team_size,
+    AVG(e.salary) as avg_team_salary
+FROM projects p
+LEFT JOIN employees e ON e.department LIKE CONCAT(SUBSTRING(p.name, 1, 3), '%')
+GROUP BY p.project_id, p.name, p.description
+ORDER BY team_size DESC;`
     }
   ]);
 
@@ -1136,7 +1152,7 @@ ORDER BY avg_salary DESC;`
                   Business
                 </Badge>
               </div>
-              <ScrollArea className="max-h-64">
+              <ScrollArea className="max-h-80">
                 <div className="space-y-2">
                   {prebuiltReports.map((report) => (
                     <Card 
