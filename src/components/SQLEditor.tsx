@@ -118,6 +118,88 @@ ORDER BY e.salary DESC;`);
     }
   ]);
 
+  // Prebuilt reports for business mode
+  const [prebuiltReports] = useState([
+    {
+      id: 1,
+      title: "Employee Performance Dashboard",
+      description: "Monthly performance metrics by department",
+      category: "HR",
+      lastRun: "2 hours ago",
+      query: `SELECT 
+    d.name as department,
+    COUNT(e.employee_id) as total_employees,
+    AVG(e.salary) as avg_salary,
+    MAX(e.salary) as max_salary
+FROM employees e
+JOIN departments d ON e.department = d.name
+GROUP BY d.name
+ORDER BY avg_salary DESC;`
+    },
+    {
+      id: 2,
+      title: "Revenue by Department",
+      description: "Quarterly revenue breakdown and targets",
+      category: "Finance",
+      lastRun: "1 day ago",
+      query: `SELECT 
+    d.name as department,
+    d.budget,
+    COUNT(p.project_id) as active_projects
+FROM departments d
+LEFT JOIN projects p ON p.name LIKE CONCAT(d.name, '%')
+ORDER BY d.budget DESC;`
+    },
+    {
+      id: 3,
+      title: "New Hires Report",
+      description: "Recent hiring trends and onboarding status",
+      category: "HR",
+      lastRun: "3 hours ago",
+      query: `SELECT 
+    e.first_name,
+    e.last_name,
+    e.department,
+    e.hire_date,
+    DATEDIFF(CURDATE(), e.hire_date) as days_employed
+FROM employees e
+WHERE e.hire_date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
+ORDER BY e.hire_date DESC;`
+    },
+    {
+      id: 4,
+      title: "Salary Analysis",
+      description: "Compensation benchmarks and equity analysis",
+      category: "Finance",
+      lastRun: "5 hours ago",
+      query: `SELECT 
+    e.department,
+    COUNT(*) as employee_count,
+    MIN(e.salary) as min_salary,
+    AVG(e.salary) as avg_salary,
+    MAX(e.salary) as max_salary
+FROM employees e
+GROUP BY e.department
+ORDER BY avg_salary DESC;`
+    }
+  ]);
+
+  const handleRunPrebuiltReport = (report) => {
+    setSqlQuery(report.query);
+    setQueryTitle(report.title);
+    setQueryDescription(report.description);
+    
+    toast({
+      title: "Report Loaded",
+      description: `"${report.title}" has been loaded into the editor`,
+    });
+    
+    // Auto-run the report
+    setTimeout(() => {
+      handleRunQuery();
+    }, 500);
+  };
+
   // Apply dark mode
   useEffect(() => {
     if (darkMode) {
@@ -569,6 +651,48 @@ ORDER BY e.salary DESC;`);
       <div className="flex h-[calc(100vh-73px)]">
         {/* Sidebar */}
         <div className="w-80 border-r bg-card/50 flex flex-col">
+          {/* Prebuilt Reports - Only show in Business Mode */}
+          {businessMode && (
+            <div className="p-4 border-b bg-gradient-to-r from-primary/5 to-primary/10">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-medium flex items-center">
+                  <Building2 className="w-4 h-4 mr-2 text-primary" />
+                  Prebuilt Reports
+                </h3>
+                <Badge variant="secondary" className="text-xs bg-primary/20 text-primary">
+                  Business
+                </Badge>
+              </div>
+              <ScrollArea className="max-h-64">
+                <div className="space-y-2">
+                  {prebuiltReports.map((report) => (
+                    <Card 
+                      key={report.id} 
+                      className="p-3 cursor-pointer hover:bg-primary/5 transition-colors border-primary/20"
+                      onClick={() => handleRunPrebuiltReport(report)}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <h4 className="text-sm font-medium mb-1">{report.title}</h4>
+                          <p className="text-xs text-muted-foreground mb-2">{report.description}</p>
+                          <div className="flex items-center space-x-2">
+                            <Badge variant="outline" className="text-xs px-1.5 py-0.5">
+                              {report.category}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">{report.lastRun}</span>
+                          </div>
+                        </div>
+                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
+                          <Play className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+          )}
+
           {/* Saved Statements */}
           <div className="p-4 border-b">
             <div className="flex items-center justify-between mb-3">
@@ -617,7 +741,7 @@ ORDER BY e.salary DESC;`);
               </Dialog>
             </div>
             <div className="text-sm text-muted-foreground">
-              No saved statements yet
+              {savedStatements.length === 0 ? "No saved statements yet" : `${savedStatements.length} saved statements`}
             </div>
           </div>
 
