@@ -52,6 +52,24 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+				success: {
+					DEFAULT: 'hsl(var(--success))',
+					foreground: 'hsl(var(--success-foreground))'
+				},
+				warning: {
+					DEFAULT: 'hsl(var(--warning))',
+					foreground: 'hsl(var(--warning-foreground))'
+				},
+				editor: {
+					background: 'hsl(var(--editor-background))',
+					foreground: 'hsl(var(--editor-foreground))',
+					'line-number': 'hsl(var(--editor-line-number))',
+					selection: 'hsl(var(--editor-selection))',
+					keyword: 'hsl(var(--editor-keyword))',
+					string: 'hsl(var(--editor-string))',
+					comment: 'hsl(var(--editor-comment))',
+					number: 'hsl(var(--editor-number))'
+				},
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',
