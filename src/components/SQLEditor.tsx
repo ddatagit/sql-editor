@@ -82,6 +82,15 @@ SELECT e.first_name,e.last_name,e.department,e.salary,d.budget as department_bud
   const [currentWord, setCurrentWord] = useState("");
   const [showSQLHelp, setShowSQLHelp] = useState(false);
 
+  // Apply dark mode
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [darkMode]);
+
   // Active collaborators
   const [activeUsers] = useState([
     { id: 1, name: "John Doe", avatar: "JD", status: "online", lastSeen: "now" },
@@ -182,6 +191,44 @@ GROUP BY e.department
 ORDER BY avg_salary DESC;`
     }
   ]);
+
+  const [comments, setComments] = useState([
+    {
+      id: 1,
+      author: "John Doe",
+      time: "2 minutes ago",
+      content: "This query looks good, but we might want to add an index on the salary column for better performance.",
+      type: "suggestion"
+    },
+    {
+      id: 2,
+      author: "Jane Smith",
+      time: "5 minutes ago", 
+      content: "Approved for production use. Great work on the department join!",
+      type: "approval"
+    }
+  ]);
+
+  const tableSchemas = {
+    employees: [
+      { column: "employee_id", type: "integer", key: "PK" },
+      { column: "first_name", type: "varchar(50)", key: "" },
+      { column: "last_name", type: "varchar(50)", key: "" },
+      { column: "department", type: "varchar(50)", key: "" },
+      { column: "salary", type: "integer", key: "" },
+      { column: "hire_date", type: "date", key: "" },
+    ],
+    departments: [
+      { column: "department_id", type: "integer", key: "PK" },
+      { column: "name", type: "varchar(50)", key: "" },
+      { column: "budget", type: "integer", key: "" },
+    ],
+    projects: [
+      { column: "project_id", type: "integer", key: "PK" },
+      { column: "name", type: "varchar(100)", key: "" },
+      { column: "description", type: "text", key: "" },
+    ]
+  };
 
   // SQL Keywords and suggestions for auto-complete
   const sqlKeywords = [
@@ -352,27 +399,6 @@ ORDER BY avg_salary DESC;`
     }
   };
 
-  const handleRestoreVersion = (version) => {
-    setSqlQuery(version.query);
-    setShowVersionDialog(false);
-    
-    toast({
-      title: "Version Restored",
-      description: `Restored to ${version.version} by ${version.author}`,
-    });
-    
-    // Add a comment about the restore
-    const restoreComment = {
-      id: comments.length + 1,
-      author: "System",
-      time: "Just now",
-      content: `Query restored to ${version.version} (${version.changes})`,
-      type: "system"
-    };
-    setComments([restoreComment, ...comments]);
-    setShowComments(true);
-  };
-
   const handleRunPrebuiltReport = (report) => {
     setSqlQuery(report.query);
     setQueryTitle(report.title);
@@ -387,61 +413,6 @@ ORDER BY avg_salary DESC;`
     setTimeout(() => {
       handleRunQuery();
     }, 500);
-  };
-
-  // Apply dark mode
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [darkMode]);
-
-  const [comments, setComments] = useState([
-    {
-      id: 1,
-      author: "John Doe",
-      time: "2 minutes ago",
-      content: "This query looks good, but we might want to add an index on the salary column for better performance.",
-      type: "suggestion"
-    },
-    {
-      id: 2,
-      author: "Jane Smith",
-      time: "5 minutes ago", 
-      content: "Approved for production use. Great work on the department join!",
-      type: "approval"
-    }
-  ]);
-
-  const tableSchemas = {
-    employees: [
-      { column: "employee_id", type: "integer", key: "PK" },
-      { column: "first_name", type: "varchar(50)", key: "" },
-      { column: "last_name", type: "varchar(50)", key: "" },
-      { column: "department", type: "varchar(50)", key: "" },
-      { column: "salary", type: "integer", key: "" },
-      { column: "hire_date", type: "date", key: "" },
-    ],
-    departments: [
-      { column: "department_id", type: "integer", key: "PK" },
-      { column: "name", type: "varchar(50)", key: "" },
-      { column: "budget", type: "integer", key: "" },
-    ],
-    projects: [
-      { column: "project_id", type: "integer", key: "PK" },
-      { column: "name", type: "varchar(100)", key: "" },
-      { column: "description", type: "text", key: "" },
-    ]
-  };
-
-  const handleSaveQuery = () => {
-    setShowSaveDialog(true);
-  };
-
-  const handleAddStatement = () => {
-    setShowAddStatementDialog(true);
   };
 
   const handleFormatQuery = () => {
@@ -723,6 +694,14 @@ ORDER BY avg_salary DESC;`
     }
   };
 
+  const handleSaveQuery = () => {
+    setShowSaveDialog(true);
+  };
+
+  const handleAddStatement = () => {
+    setShowAddStatementDialog(true);
+  };
+
   const saveQuery = () => {
     // Handle saving the query with title and description
     const newStatement = {
@@ -777,6 +756,27 @@ ORDER BY avg_salary DESC;`
     setQueryDescription("");
   };
 
+  const handleRestoreVersion = (version) => {
+    setSqlQuery(version.query);
+    setShowVersionDialog(false);
+    
+    toast({
+      title: "Version Restored",
+      description: `Restored to ${version.version} by ${version.author}`,
+    });
+    
+    // Add a comment about the restore
+    const restoreComment = {
+      id: comments.length + 1,
+      author: "System",
+      time: "Just now",
+      content: `Query restored to ${version.version} (${version.changes})`,
+      type: "system"
+    };
+    setComments([restoreComment, ...comments]);
+    setShowComments(true);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted">
       {/* Header */}
@@ -816,8 +816,6 @@ ORDER BY avg_salary DESC;`
               <Moon className="w-4 h-4 text-muted-foreground" />
             </div>
             
-            <Dialog open={showCollaborateDialog} onOpenChange={setShowCollaborateDialog}>
-              <DialogTrigger asChild>
             <Dialog open={showCollaborateDialog} onOpenChange={setShowCollaborateDialog}>
               <DialogTrigger asChild>
                 <Button variant="ghost" size="sm">
@@ -995,41 +993,7 @@ ORDER BY avg_salary DESC;`
                 </Tabs>
               </DialogContent>
             </Dialog>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Active Collaborators</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    Team members currently working on this query:
-                  </p>
-                  <div className="space-y-3">
-                    {activeUsers.map((user) => (
-                      <div key={user.id} className="flex items-center space-x-3">
-                        <Avatar className="w-8 h-8">
-                          <AvatarFallback className="text-xs">
-                            {user.avatar}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-sm font-medium">{user.name}</span>
-                            <div className="flex items-center space-x-1">
-                              <Circle className={`w-2 h-2 fill-current ${
-                                user.status === 'online' ? 'text-success' : 'text-warning'
-                              }`} />
-                              <span className="text-xs text-muted-foreground">{user.status}</span>
-                            </div>
-                          </div>
-                          <span className="text-xs text-muted-foreground">{user.lastSeen}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
+
             <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
               <DialogTrigger asChild>
                 <Button variant="ghost" size="sm">
@@ -1493,36 +1457,6 @@ DESCRIBE employees;"
                       </div>
                     </div>
                   )}
-                </div>
-                
-                {/* Syntax highlighted display (readonly) */}
-                <div className="absolute inset-0 pointer-events-none">
-                  <div className="p-4 pt-16">
-                    <div className="font-mono text-sm space-y-1">
-                      {sqlQuery.split('\n').map((line, index) => (
-                        <div key={index} className="flex opacity-90">
-                          <span className="w-8 text-editor-line-number text-right pr-2 select-none">
-                            {index + 1}
-                          </span>
-                          <pre className="flex-1">
-                            <code className="text-editor-foreground">
-                              {line.includes('--') ? (
-                                <span className="text-editor-comment">{line}</span>
-                              ) : line.includes('SELECT') || line.includes('FROM') || line.includes('WHERE') || line.includes('ORDER BY') || line.includes('LEFT JOIN') ? (
-                                <span className="text-editor-keyword font-semibold">{line}</span>
-                              ) : line.includes("'") ? (
-                                <span className="text-editor-string">{line}</span>
-                              ) : line.match(/\d+/) ? (
-                                <span className="text-editor-number">{line}</span>
-                              ) : (
-                                line
-                              )}
-                            </code>
-                          </pre>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
                 </div>
               </Card>
             </div>
