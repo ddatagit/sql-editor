@@ -73,6 +73,9 @@ SELECT e.first_name,e.last_name,e.department,e.salary,d.budget as department_bud
   const [queryResults, setQueryResults] = useState(null);
   const [queryError, setQueryError] = useState(null);
   const [selectedStatement, setSelectedStatement] = useState(null);
+  const [showAutoComplete, setShowAutoComplete] = useState(false);
+  const [autoCompletePosition, setAutoCompletePosition] = useState({ x: 0, y: 0 });
+  const [autoCompleteSuggestions, setAutoCompleteSuggestions] = useState([]);
 
   // Active collaborators
   const [activeUsers] = useState([
@@ -174,6 +177,134 @@ GROUP BY e.department
 ORDER BY avg_salary DESC;`
     }
   ]);
+
+  // SQL Keywords and suggestions for auto-complete
+  const sqlKeywords = [
+    'SELECT', 'FROM', 'WHERE', 'JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'INNER JOIN', 'FULL JOIN',
+    'GROUP BY', 'ORDER BY', 'HAVING', 'LIMIT', 'OFFSET', 'UNION', 'UNION ALL',
+    'INSERT', 'UPDATE', 'DELETE', 'CREATE', 'ALTER', 'DROP', 'INDEX',
+    'COUNT', 'SUM', 'AVG', 'MIN', 'MAX', 'DISTINCT', 'AS', 'AND', 'OR', 'NOT',
+    'NULL', 'IS NULL', 'IS NOT NULL', 'LIKE', 'IN', 'EXISTS', 'BETWEEN',
+    'CASE', 'WHEN', 'THEN', 'ELSE', 'END', 'IF', 'COALESCE', 'CAST',
+    'DATE', 'TIME', 'TIMESTAMP', 'YEAR', 'MONTH', 'DAY'
+  ];
+
+  const tableColumns = [
+    // Employees table
+    'employees.employee_id', 'employees.first_name', 'employees.last_name', 
+    'employees.department', 'employees.salary', 'employees.hire_date',
+    'e.employee_id', 'e.first_name', 'e.last_name', 'e.department', 'e.salary', 'e.hire_date',
+    
+    // Departments table  
+    'departments.department_id', 'departments.name', 'departments.budget',
+    'd.department_id', 'd.name', 'd.budget',
+    
+    // Projects table
+    'projects.project_id', 'projects.name', 'projects.description',
+    'p.project_id', 'p.name', 'p.description'
+  ];
+
+  const getAutoCompleteSuggestions = (currentWord) => {
+    const word = currentWord.toLowerCase();
+    const suggestions = [];
+    
+    // Add matching SQL keywords
+    sqlKeywords.forEach(keyword => {
+      if (keyword.toLowerCase().startsWith(word)) {
+        suggestions.push({ type: 'keyword', value: keyword, description: 'SQL Keyword' });
+      }
+    });
+    
+    // Add matching table columns
+    tableColumns.forEach(column => {
+      if (column.toLowerCase().includes(word)) {
+        suggestions.push({ type: 'column', value: column, description: 'Table Column' });
+      }
+    });
+    
+    // Add table names
+    Object.keys(tableSchemas).forEach(table => {
+      if (table.toLowerCase().startsWith(word)) {
+        suggestions.push({ type: 'table', value: table, description: 'Table Name' });
+      }
+    });
+    
+    return suggestions.slice(0, 10); // Limit to 10 suggestions
+  };
+
+  const handleEditorKeyDown = (e) => {
+    if (e.key === ' ' && e.ctrlKey) {
+      // Ctrl+Space to trigger auto-complete
+      e.preventDefault();
+      const textarea = e.target as HTMLTextAreaElement;
+      const cursorPos = textarea.selectionStart;
+      const textBeforeCursor = sqlQuery.substring(0, cursorPos);
+      const words = textBeforeCursor.split(/\s+/);
+      const currentWord = words[words.length - 1] || '';
+      
+      const suggestions = getAutoCompleteSuggestions(currentWord);
+      if (suggestions.length > 0) {
+        setAutoCompleteSuggestions(suggestions);
+        setShowAutoComplete(true);
+        
+        // Position the autocomplete popup
+        const rect = textarea.getBoundingClientRect();
+        setAutoCompletePosition({
+          x: rect.left + (cursorPos * 8), // Approximate character width
+          y: rect.top + 20
+        });
+      }
+    } else if (e.key === 'Escape') {
+      setShowAutoComplete(false);
+    } else if (e.key === 'Enter' && e.ctrlKey) {
+      // Ctrl+Enter to run query
+      e.preventDefault();
+      handleRunQuery();
+    }
+  };
+
+  const insertAutoComplete = (suggestion) => {
+    const textarea = document.querySelector('.sql-editor-textarea') as HTMLTextAreaElement;
+    if (textarea) {
+      const cursorPos = textarea.selectionStart;
+      const textBeforeCursor = sqlQuery.substring(0, cursorPos);
+      const textAfterCursor = sqlQuery.substring(cursorPos);
+      const words = textBeforeCursor.split(/\s+/);
+      const currentWord = words[words.length - 1] || '';
+      
+      const newTextBefore = textBeforeCursor.substring(0, textBeforeCursor.length - currentWord.length);
+      const newQuery = newTextBefore + suggestion.value + textAfterCursor;
+      
+      setSqlQuery(newQuery);
+      setShowAutoComplete(false);
+      
+      toast({
+        title: "Auto-complete",
+        description: `Inserted "${suggestion.value}"`,
+      });
+    }
+  };
+
+  const handleRestoreVersion = (version) => {
+    setSqlQuery(version.query);
+    setShowVersionDialog(false);
+    
+    toast({
+      title: "Version Restored",
+      description: `Restored to ${version.version} by ${version.author}`,
+    });
+    
+    // Add a comment about the restore
+    const restoreComment = {
+      id: comments.length + 1,
+      author: "System",
+      time: "Just now",
+      content: `Query restored to ${version.version} (${version.changes})`,
+      type: "system"
+    };
+    setComments([restoreComment, ...comments]);
+    setShowComments(true);
+  };
 
   const handleRunPrebuiltReport = (report) => {
     setSqlQuery(report.query);
@@ -909,7 +1040,7 @@ ORDER BY avg_salary DESC;`
                                         {version.query}
                                       </div>
                                       <div className="flex justify-end mt-2">
-                                        <Button size="sm" variant="ghost" onClick={() => setSqlQuery(version.query)}>
+                                        <Button size="sm" variant="ghost" onClick={() => handleRestoreVersion(version)}>
                                           <GitBranch className="w-3 h-3 mr-1" />
                                           Restore
                                         </Button>
@@ -941,36 +1072,81 @@ ORDER BY avg_salary DESC;`
               </div>
 
               {/* Code Editor Area */}
-              <Card className="min-h-[300px] overflow-hidden">
+              <Card className="min-h-[300px] overflow-hidden relative">
                 <div className="bg-editor-background border-b px-4 py-2 flex items-center justify-between">
                   <div className="flex items-center space-x-4 text-sm">
                     <span className="text-editor-comment">-- Advanced SQL Editor with Monaco</span>
                   </div>
+                  <div className="text-xs text-muted-foreground">
+                    Ctrl+Space: Auto-complete • Ctrl+Enter: Run Query
+                  </div>
                 </div>
-                <div className="p-4">
-                  <div className="font-mono text-sm space-y-1">
-                    {sqlQuery.split('\n').map((line, index) => (
-                      <div key={index} className="flex">
-                        <span className="w-8 text-editor-line-number text-right pr-2 select-none">
-                          {index + 1}
-                        </span>
-                        <pre className="flex-1">
-                          <code className="text-editor-foreground">
-                            {line.includes('--') ? (
-                              <span className="text-editor-comment">{line}</span>
-                            ) : line.includes('SELECT') || line.includes('FROM') || line.includes('WHERE') || line.includes('ORDER BY') || line.includes('LEFT JOIN') ? (
-                              <span className="text-editor-keyword font-semibold">{line}</span>
-                            ) : line.includes("'") ? (
-                              <span className="text-editor-string">{line}</span>
-                            ) : line.match(/\d+/) ? (
-                              <span className="text-editor-number">{line}</span>
-                            ) : (
-                              line
-                            )}
-                          </code>
-                        </pre>
+                <div className="p-4 relative">
+                  <textarea
+                    className="sql-editor-textarea w-full h-64 bg-transparent border-none outline-none resize-none font-mono text-sm"
+                    value={sqlQuery}
+                    onChange={(e) => setSqlQuery(e.target.value)}
+                    onKeyDown={handleEditorKeyDown}
+                    placeholder="Enter your SQL query here..."
+                  />
+                  
+                  {/* Auto-complete popup */}
+                  {showAutoComplete && (
+                    <div 
+                      className="absolute z-50 bg-popover border border-border rounded-lg shadow-lg max-w-xs"
+                      style={{ 
+                        left: Math.min(autoCompletePosition.x, 300),
+                        top: autoCompletePosition.y + 20
+                      }}
+                    >
+                      <div className="p-2">
+                        <div className="text-xs text-muted-foreground mb-2 px-2">Suggestions</div>
+                        <div className="space-y-1">
+                          {autoCompleteSuggestions.map((suggestion, index) => (
+                            <button
+                              key={index}
+                              className="w-full text-left px-2 py-1 text-sm rounded hover:bg-accent hover:text-accent-foreground flex items-center justify-between"
+                              onClick={() => insertAutoComplete(suggestion)}
+                            >
+                              <span className="font-mono">{suggestion.value}</span>
+                              <Badge variant="outline" className="text-xs ml-2">
+                                {suggestion.type}
+                              </Badge>
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                    ))}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Syntax highlighted display (readonly) */}
+                <div className="absolute inset-0 pointer-events-none">
+                  <div className="p-4 pt-16">
+                    <div className="font-mono text-sm space-y-1">
+                      {sqlQuery.split('\n').map((line, index) => (
+                        <div key={index} className="flex opacity-90">
+                          <span className="w-8 text-editor-line-number text-right pr-2 select-none">
+                            {index + 1}
+                          </span>
+                          <pre className="flex-1">
+                            <code className="text-editor-foreground">
+                              {line.includes('--') ? (
+                                <span className="text-editor-comment">{line}</span>
+                              ) : line.includes('SELECT') || line.includes('FROM') || line.includes('WHERE') || line.includes('ORDER BY') || line.includes('LEFT JOIN') ? (
+                                <span className="text-editor-keyword font-semibold">{line}</span>
+                              ) : line.includes("'") ? (
+                                <span className="text-editor-string">{line}</span>
+                              ) : line.match(/\d+/) ? (
+                                <span className="text-editor-number">{line}</span>
+                              ) : (
+                                line
+                              )}
+                            </code>
+                          </pre>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </Card>
