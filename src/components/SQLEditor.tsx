@@ -48,7 +48,11 @@ import {
   Monitor,
   Circle,
   HelpCircle,
-  BookOpen
+  BookOpen,
+  Upload,
+  File,
+  FileSpreadsheet,
+  RefreshCw
 } from "lucide-react";
 
 const SQLEditor = () => {
@@ -79,6 +83,10 @@ const SQLEditor = () => {
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(0);
   const [currentWord, setCurrentWord] = useState("");
   const [showSQLHelp, setShowSQLHelp] = useState(false);
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Apply dark mode
   useEffect(() => {
@@ -844,6 +852,98 @@ ORDER BY team_size DESC;`
     setShowComments(true);
   };
 
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files) return;
+    
+    const files = Array.from(event.target.files);
+    setIsUploading(true);
+    setUploadProgress(0);
+    
+    files.forEach((file, index) => {
+      const reader = new FileReader();
+      
+      reader.onload = (e) => {
+        const content = e.target?.result as string;
+        if (!content) return;
+        
+        let parsedData = null;
+        
+        // Parse different file types
+        if (file.name.endsWith('.sql')) {
+          parsedData = { type: 'sql', content, name: file.name };
+          // Auto-load SQL content into editor
+          setSqlQuery(content);
+        } else if (file.name.endsWith('.csv')) {
+          const lines = content.split('\n');
+          const headers = lines[0].split(',');
+          const rows = lines.slice(1).map(line => line.split(','));
+          parsedData = { type: 'csv', headers, rows, name: file.name, content };
+        } else if (file.name.endsWith('.json')) {
+          try {
+            const json = JSON.parse(content);
+            parsedData = { type: 'json', data: json, name: file.name, content };
+          } catch (err) {
+            console.error('Invalid JSON file:', err);
+          }
+        }
+        
+        if (parsedData) {
+          const uploadedFile = {
+            id: Date.now() + index,
+            ...parsedData,
+            uploadedAt: new Date().toISOString(),
+            size: file.size
+          };
+          
+          setUploadedFiles(prev => [...prev, uploadedFile]);
+          
+          toast({
+            title: "File Uploaded",
+            description: `${file.name} has been processed successfully`,
+          });
+        }
+        
+        // Update progress
+        setUploadProgress(((index + 1) / files.length) * 100);
+        
+        if (index === files.length - 1) {
+          setTimeout(() => {
+            setIsUploading(false);
+            setUploadProgress(0);
+          }, 500);
+        }
+      };
+      
+      reader.readAsText(file);
+    });
+  };
+
+  const generateTableFromCSV = (csvFile: any) => {
+    const tableName = csvFile.name.replace('.csv', '').toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const columns = csvFile.headers.map((header: string) => header.trim().replace(/[^a-z0-9]/g, '_').toLowerCase());
+    
+    const createTableSQL = `-- Generated from ${csvFile.name}
+CREATE TABLE ${tableName} (
+  ${columns.map((col: string) => `  ${col} TEXT`).join(',\n')}
+);
+
+INSERT INTO ${tableName} (${columns.join(', ')}) VALUES
+${csvFile.rows.slice(0, 5).map((row: string[]) => 
+  `  (${row.map(cell => `'${cell?.trim() || ''}'`).join(', ')})`
+).join(',\n')};
+
+-- Query the uploaded data
+SELECT * FROM ${tableName} LIMIT 10;`;
+    
+    setSqlQuery(createTableSQL);
+    setShowUploadDialog(false);
+    
+    toast({
+      title: "SQL Generated",
+      description: `Table creation script generated for ${csvFile.name}`,
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted">
       {/* Header */}
@@ -1278,6 +1378,107 @@ ORDER BY team_size DESC;`
                         Add Statement
                       </Button>
                     </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+              
+              <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload Database
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Upload Database Files</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
+                      <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                      <h3 className="text-lg font-medium mb-2">Upload your database files</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Supports .sql, .csv, and .json files
+                      </p>
+                      <input
+                        type="file"
+                        multiple
+                        accept=".sql,.csv,.json"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                        id="file-upload"
+                      />
+                      <label htmlFor="file-upload">
+                        <Button asChild>
+                          <span>Select Files</span>
+                        </Button>
+                      </label>
+                    </div>
+                    
+                    {isUploading && (
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span className="text-sm">Processing files...</span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-2">
+                          <div 
+                            className="bg-primary h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${uploadProgress}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                    
+                    {uploadedFiles.length > 0 && (
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-medium">Uploaded Files</h4>
+                        <ScrollArea className="h-48">
+                          <div className="space-y-2">
+                            {uploadedFiles.map((file) => (
+                              <Card key={file.id} className="p-3">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-3">
+                                    {file.type === 'sql' && <File className="w-4 h-4 text-blue-500" />}
+                                    {file.type === 'csv' && <FileSpreadsheet className="w-4 h-4 text-green-500" />}
+                                    {file.type === 'json' && <FileText className="w-4 h-4 text-orange-500" />}
+                                    <div>
+                                      <p className="text-sm font-medium">{file.name}</p>
+                                      <p className="text-xs text-muted-foreground">
+                                        {(file.size / 1024).toFixed(1)} KB • {file.type.toUpperCase()}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    {file.type === 'csv' && (
+                                      <Button 
+                                        size="sm" 
+                                        variant="outline"
+                                        onClick={() => generateTableFromCSV(file)}
+                                      >
+                                        Generate SQL
+                                      </Button>
+                                    )}
+                                    {file.type === 'sql' && (
+                                      <Button 
+                                        size="sm" 
+                                        variant="outline"
+                                        onClick={() => {
+                                          setSqlQuery(file.content);
+                                          setShowUploadDialog(false);
+                                        }}
+                                      >
+                                        Load SQL
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
+                              </Card>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      </div>
+                    )}
                   </div>
                 </DialogContent>
               </Dialog>
