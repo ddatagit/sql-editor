@@ -9,6 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Play, 
@@ -32,7 +34,19 @@ import {
   Code2,
   Building2,
   Link,
-  Check
+  Check,
+  History,
+  GitBranch,
+  Edit3,
+  AlertCircle,
+  CheckCircle,
+  XCircle,
+  Eye,
+  Bell,
+  Shield,
+  Palette,
+  Monitor,
+  Circle
 } from "lucide-react";
 
 const SQLEditor = () => {
@@ -62,6 +76,47 @@ ORDER BY e.salary DESC;`);
   const [darkMode, setDarkMode] = useState(false);
   const [businessMode, setBusinessMode] = useState(false);
   const [savedStatements, setSavedStatements] = useState([]);
+  const [showVersionDialog, setShowVersionDialog] = useState(false);
+  const [showCollaborateDialog, setShowCollaborateDialog] = useState(false);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  const [queryResults, setQueryResults] = useState(null);
+  const [queryError, setQueryError] = useState(null);
+  const [selectedStatement, setSelectedStatement] = useState(null);
+
+  // Active collaborators
+  const [activeUsers] = useState([
+    { id: 1, name: "John Doe", avatar: "JD", status: "online", lastSeen: "now" },
+    { id: 2, name: "Jane Smith", avatar: "JS", status: "online", lastSeen: "2 min ago" },
+    { id: 3, name: "Bob Wilson", avatar: "BW", status: "away", lastSeen: "10 min ago" },
+  ]);
+
+  // Version history mock data
+  const [versionHistory] = useState([
+    {
+      id: 1,
+      version: "v1.3",
+      author: "John Doe",
+      timestamp: "2024-01-15 14:30",
+      changes: "Added ORDER BY clause and optimized JOIN",
+      query: "SELECT e.first_name, e.last_name FROM employees e ORDER BY e.salary DESC;"
+    },
+    {
+      id: 2,
+      version: "v1.2",
+      author: "Jane Smith", 
+      timestamp: "2024-01-15 10:15",
+      changes: "Updated WHERE condition for salary threshold",
+      query: "SELECT e.first_name, e.last_name FROM employees e WHERE e.salary > 70000;"
+    },
+    {
+      id: 3,
+      version: "v1.1",
+      author: "Current User",
+      timestamp: "2024-01-14 16:45",
+      changes: "Initial version with basic employee query",
+      query: "SELECT e.first_name, e.last_name FROM employees e;"
+    }
+  ]);
 
   // Apply dark mode
   useEffect(() => {
@@ -176,13 +231,60 @@ ORDER BY e.salary DESC;`);
   const handleRunQuery = () => {
     setQueryRunning(true);
     setShowComments(true);
-    // Simulate query execution
+    setQueryError(null);
+    setQueryResults(null);
+    
+    // Simulate query execution with realistic success/error scenarios
     setTimeout(() => {
       setQueryRunning(false);
-      toast({
-        title: "Query Executed",
-        description: "SQL query ran successfully",
-      });
+      
+      // Simple query validation
+      const query = sqlQuery.toLowerCase();
+      if (query.includes('drop') || query.includes('delete') || query.includes('truncate')) {
+        // Error case - dangerous operations
+        setQueryError({
+          type: "error",
+          message: "Dangerous operation detected",
+          suggestion: "Consider using SELECT statements for data exploration",
+          line: 1
+        });
+        toast({
+          title: "Query Error",
+          description: "Dangerous operation detected in query",
+          variant: "destructive"
+        });
+      } else if (!query.includes('select')) {
+        // Error case - missing SELECT
+        setQueryError({
+          type: "error", 
+          message: "Invalid SQL syntax",
+          suggestion: "Query should start with SELECT keyword",
+          line: 4
+        });
+        toast({
+          title: "Syntax Error",
+          description: "Query validation failed",
+          variant: "destructive"
+        });
+      } else {
+        // Success case
+        setQueryResults({
+          columns: ["first_name", "last_name", "department", "salary"],
+          rows: [
+            ["John", "Doe", "Engineering", "85000"],
+            ["Jane", "Smith", "Marketing", "78000"],
+            ["Bob", "Johnson", "Sales", "82000"],
+            ["Alice", "Wilson", "Engineering", "90000"],
+            ["Tom", "Brown", "Finance", "76000"]
+          ],
+          executionTime: "247ms",
+          rowCount: 5
+        });
+        toast({
+          title: "Query Executed Successfully",
+          description: `Returned ${5} rows in 247ms`,
+        });
+      }
     }, 1500);
   };
 
@@ -293,13 +395,173 @@ ORDER BY e.salary DESC;`);
               <Moon className="w-4 h-4 text-muted-foreground" />
             </div>
             
-            <Button variant="ghost" size="sm">
-              <Users className="w-4 h-4 mr-2" />
-              Collaborate
-            </Button>
-            <Button variant="ghost" size="sm">
-              <Settings className="w-4 h-4" />
-            </Button>
+            <Dialog open={showCollaborateDialog} onOpenChange={setShowCollaborateDialog}>
+              <DialogTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <Users className="w-4 h-4 mr-2" />
+                  Collaborate
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Active Collaborators</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Team members currently working on this query:
+                  </p>
+                  <div className="space-y-3">
+                    {activeUsers.map((user) => (
+                      <div key={user.id} className="flex items-center space-x-3">
+                        <Avatar className="w-8 h-8">
+                          <AvatarFallback className="text-xs">
+                            {user.avatar}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-sm font-medium">{user.name}</span>
+                            <div className="flex items-center space-x-1">
+                              <Circle className={`w-2 h-2 fill-current ${
+                                user.status === 'online' ? 'text-success' : 'text-warning'
+                              }`} />
+                              <span className="text-xs text-muted-foreground">{user.status}</span>
+                            </div>
+                          </div>
+                          <span className="text-xs text-muted-foreground">{user.lastSeen}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+            <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
+              <DialogTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <Settings className="w-4 h-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Settings</DialogTitle>
+                </DialogHeader>
+                <Tabs defaultValue="general" className="w-full">
+                  <TabsList className="grid w-full grid-cols-4">
+                    <TabsTrigger value="general">General</TabsTrigger>
+                    <TabsTrigger value="editor">Editor</TabsTrigger>
+                    <TabsTrigger value="security">Security</TabsTrigger>
+                    <TabsTrigger value="notifications">Alerts</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="general" className="space-y-4 mt-4">
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-medium">Theme & Display</h4>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <Palette className="w-4 h-4" />
+                          <span className="text-sm">Dark Mode</span>
+                        </div>
+                        <Switch checked={darkMode} onCheckedChange={setDarkMode} />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <Monitor className="w-4 h-4" />
+                          <span className="text-sm">Business Mode</span>
+                        </div>
+                        <Switch checked={businessMode} onCheckedChange={setBusinessMode} />
+                      </div>
+                    </div>
+                    <Separator />
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-medium">Auto-save Settings</h4>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">Auto-save interval</span>
+                        <Select defaultValue="5">
+                          <SelectTrigger className="w-20">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1">1m</SelectItem>
+                            <SelectItem value="5">5m</SelectItem>
+                            <SelectItem value="10">10m</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="editor" className="space-y-4 mt-4">
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-medium">Code Editor</h4>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">Font size</span>
+                        <Select defaultValue="14">
+                          <SelectTrigger className="w-20">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="12">12px</SelectItem>
+                            <SelectItem value="14">14px</SelectItem>
+                            <SelectItem value="16">16px</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">Auto-completion</span>
+                        <Switch defaultChecked />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">Syntax highlighting</span>
+                        <Switch defaultChecked />
+                      </div>
+                    </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="security" className="space-y-4 mt-4">
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-2">
+                        <Shield className="w-4 h-4" />
+                        <h4 className="text-sm font-medium">Query Permissions</h4>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">Allow DELETE operations</span>
+                        <Switch />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">Allow DROP operations</span>
+                        <Switch />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">Require approval for production queries</span>
+                        <Switch defaultChecked />
+                      </div>
+                    </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="notifications" className="space-y-4 mt-4">
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-2">
+                        <Bell className="w-4 h-4" />
+                        <h4 className="text-sm font-medium">Notification Settings</h4>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">Query completion alerts</span>
+                        <Switch defaultChecked />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">Collaboration notifications</span>
+                        <Switch defaultChecked />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">Error notifications</span>
+                        <Switch defaultChecked />
+                      </div>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </header>
@@ -440,13 +702,53 @@ ORDER BY e.salary DESC;`);
                             rows={3}
                           />
                         </div>
-                        <div className="flex justify-end space-x-2">
-                          <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
-                            Cancel
-                          </Button>
-                          <Button onClick={saveQuery}>
-                            Save Query
-                          </Button>
+                        <div className="flex justify-between items-center">
+                          <Dialog open={showVersionDialog} onOpenChange={setShowVersionDialog}>
+                            <DialogTrigger asChild>
+                              <Button variant="outline" size="sm">
+                                <History className="w-4 h-4 mr-2" />
+                                Version History
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-2xl">
+                              <DialogHeader>
+                                <DialogTitle>Version History & Edit Log</DialogTitle>
+                              </DialogHeader>
+                              <ScrollArea className="h-96">
+                                <div className="space-y-4">
+                                  {versionHistory.map((version) => (
+                                    <Card key={version.id} className="p-4">
+                                      <div className="flex items-start justify-between mb-3">
+                                        <div className="flex items-center space-x-2">
+                                          <Badge variant="outline">{version.version}</Badge>
+                                          <span className="text-sm font-medium">{version.author}</span>
+                                        </div>
+                                        <span className="text-xs text-muted-foreground">{version.timestamp}</span>
+                                      </div>
+                                      <p className="text-sm text-muted-foreground mb-3">{version.changes}</p>
+                                      <div className="bg-muted p-3 rounded text-xs font-mono">
+                                        {version.query}
+                                      </div>
+                                      <div className="flex justify-end mt-2">
+                                        <Button size="sm" variant="ghost" onClick={() => setSqlQuery(version.query)}>
+                                          <GitBranch className="w-3 h-3 mr-1" />
+                                          Restore
+                                        </Button>
+                                      </div>
+                                    </Card>
+                                  ))}
+                                </div>
+                              </ScrollArea>
+                            </DialogContent>
+                          </Dialog>
+                          <div className="flex space-x-2">
+                            <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
+                              Cancel
+                            </Button>
+                            <Button onClick={saveQuery}>
+                              Save Query
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </DialogContent>
@@ -537,11 +839,80 @@ ORDER BY e.salary DESC;`);
 
               <Card>
                 <div className="p-4">
-                  <div className="text-center text-muted-foreground py-8">
-                    <Database className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>Run a SQL query to see results here</p>
-                    <p className="text-sm mt-1">Tip: Press Ctrl+Enter to run the query</p>
-                  </div>
+                  {queryRunning ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+                      <p className="text-muted-foreground">Executing query...</p>
+                    </div>
+                  ) : queryError ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-2 text-destructive">
+                        <XCircle className="w-5 h-5" />
+                        <h4 className="font-medium">Query Error</h4>
+                      </div>
+                      <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+                        <div className="flex items-start space-x-3">
+                          <AlertCircle className="w-5 h-5 text-destructive mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-destructive font-medium">{queryError.message}</p>
+                            <p className="text-destructive/80 text-sm mt-1">
+                              Line {queryError.line}: {queryError.suggestion}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        <p>✓ Check your SQL syntax</p>
+                        <p>✓ Verify table and column names exist</p>
+                        <p>✓ Ensure proper permissions for the operation</p>
+                      </div>
+                    </div>
+                  ) : queryResults ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2 text-success">
+                          <CheckCircle className="w-5 h-5" />
+                          <h4 className="font-medium">Query Successful</h4>
+                        </div>
+                        <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                          <span>{queryResults.rowCount} rows</span>
+                          <span>{queryResults.executionTime}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="border rounded-lg overflow-hidden">
+                        <div className="bg-muted/50 border-b">
+                          <div className="grid grid-cols-4 gap-4 p-3 text-sm font-medium">
+                            {queryResults.columns.map((col) => (
+                              <div key={col} className="truncate">{col}</div>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="max-h-64 overflow-y-auto">
+                          {queryResults.rows.map((row, idx) => (
+                            <div key={idx} className="grid grid-cols-4 gap-4 p-3 text-sm border-b last:border-b-0 hover:bg-muted/30">
+                              {row.map((cell, cellIdx) => (
+                                <div key={cellIdx} className="truncate">{cell}</div>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <div className="bg-success/10 border border-success/20 rounded-lg p-3">
+                        <div className="flex items-center space-x-2 text-success text-sm">
+                          <Check className="w-4 h-4" />
+                          <span>Query executed successfully. Data retrieved from employees and departments tables.</span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center text-muted-foreground py-8">
+                      <Database className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>Run a SQL query to see results here</p>
+                      <p className="text-sm mt-1">Tip: Press Ctrl+Enter to run the query</p>
+                    </div>
+                  )}
                 </div>
               </Card>
             </div>
