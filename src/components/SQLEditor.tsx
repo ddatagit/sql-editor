@@ -46,7 +46,9 @@ import {
   Shield,
   Palette,
   Monitor,
-  Circle
+  Circle,
+  HelpCircle,
+  BookOpen
 } from "lucide-react";
 
 const SQLEditor = () => {
@@ -76,6 +78,9 @@ SELECT e.first_name,e.last_name,e.department,e.salary,d.budget as department_bud
   const [showAutoComplete, setShowAutoComplete] = useState(false);
   const [autoCompletePosition, setAutoCompletePosition] = useState({ x: 0, y: 0 });
   const [autoCompleteSuggestions, setAutoCompleteSuggestions] = useState([]);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(0);
+  const [currentWord, setCurrentWord] = useState("");
+  const [showSQLHelp, setShowSQLHelp] = useState(false);
 
   // Active collaborators
   const [activeUsers] = useState([
@@ -233,33 +238,95 @@ ORDER BY avg_salary DESC;`
   };
 
   const handleEditorKeyDown = (e) => {
+    const textarea = e.target as HTMLTextAreaElement;
+    
+    if (showAutoComplete) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedSuggestionIndex(prev => 
+          prev < autoCompleteSuggestions.length - 1 ? prev + 1 : 0
+        );
+        return;
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedSuggestionIndex(prev => 
+          prev > 0 ? prev - 1 : autoCompleteSuggestions.length - 1
+        );
+        return;
+      } else if (e.key === 'Tab' || e.key === 'Enter') {
+        e.preventDefault();
+        if (autoCompleteSuggestions[selectedSuggestionIndex]) {
+          insertAutoComplete(autoCompleteSuggestions[selectedSuggestionIndex]);
+        }
+        return;
+      } else if (e.key === 'Escape') {
+        setShowAutoComplete(false);
+        return;
+      }
+    }
+    
     if (e.key === ' ' && e.ctrlKey) {
-      // Ctrl+Space to trigger auto-complete
+      // Ctrl+Space to trigger auto-complete manually
       e.preventDefault();
-      const textarea = e.target as HTMLTextAreaElement;
-      const cursorPos = textarea.selectionStart;
-      const textBeforeCursor = sqlQuery.substring(0, cursorPos);
-      const words = textBeforeCursor.split(/\s+/);
-      const currentWord = words[words.length - 1] || '';
-      
+      triggerAutoComplete(textarea);
+    } else if (e.key === 'Enter' && e.ctrlKey) {
+      // Ctrl+Enter to run query
+      e.preventDefault();
+      handleRunQuery();
+    }
+  };
+
+  const handleEditorInput = (e) => {
+    const value = e.target.value;
+    setSqlQuery(value);
+    
+    // Auto-complete on typing (like Excel)
+    const textarea = e.target as HTMLTextAreaElement;
+    const cursorPos = textarea.selectionStart;
+    const textBeforeCursor = value.substring(0, cursorPos);
+    const words = textBeforeCursor.split(/\s+/);
+    const currentWord = words[words.length - 1] || '';
+    
+    if (currentWord.length >= 2) {
       const suggestions = getAutoCompleteSuggestions(currentWord);
       if (suggestions.length > 0) {
+        setCurrentWord(currentWord);
         setAutoCompleteSuggestions(suggestions);
+        setSelectedSuggestionIndex(0);
         setShowAutoComplete(true);
         
         // Position the autocomplete popup
         const rect = textarea.getBoundingClientRect();
         setAutoCompletePosition({
-          x: rect.left + (cursorPos * 8), // Approximate character width
+          x: rect.left + (cursorPos * 8),
           y: rect.top + 20
         });
+      } else {
+        setShowAutoComplete(false);
       }
-    } else if (e.key === 'Escape') {
+    } else {
       setShowAutoComplete(false);
-    } else if (e.key === 'Enter' && e.ctrlKey) {
-      // Ctrl+Enter to run query
-      e.preventDefault();
-      handleRunQuery();
+    }
+  };
+
+  const triggerAutoComplete = (textarea) => {
+    const cursorPos = textarea.selectionStart;
+    const textBeforeCursor = sqlQuery.substring(0, cursorPos);
+    const words = textBeforeCursor.split(/\s+/);
+    const currentWord = words[words.length - 1] || '';
+    
+    const suggestions = getAutoCompleteSuggestions(currentWord);
+    if (suggestions.length > 0) {
+      setCurrentWord(currentWord);
+      setAutoCompleteSuggestions(suggestions);
+      setSelectedSuggestionIndex(0);
+      setShowAutoComplete(true);
+      
+      const rect = textarea.getBoundingClientRect();
+      setAutoCompletePosition({
+        x: rect.left + (cursorPos * 8),
+        y: rect.top + 20
+      });
     }
   };
 
@@ -269,19 +336,19 @@ ORDER BY avg_salary DESC;`
       const cursorPos = textarea.selectionStart;
       const textBeforeCursor = sqlQuery.substring(0, cursorPos);
       const textAfterCursor = sqlQuery.substring(cursorPos);
-      const words = textBeforeCursor.split(/\s+/);
-      const currentWord = words[words.length - 1] || '';
       
       const newTextBefore = textBeforeCursor.substring(0, textBeforeCursor.length - currentWord.length);
-      const newQuery = newTextBefore + suggestion.value + textAfterCursor;
+      const newQuery = newTextBefore + suggestion.value + ' ' + textAfterCursor;
       
       setSqlQuery(newQuery);
       setShowAutoComplete(false);
       
-      toast({
-        title: "Auto-complete",
-        description: `Inserted "${suggestion.value}"`,
-      });
+      // Move cursor to after the inserted text
+      setTimeout(() => {
+        const newCursorPos = newTextBefore.length + suggestion.value.length + 1;
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+        textarea.focus();
+      }, 0);
     }
   };
 
@@ -751,10 +818,183 @@ ORDER BY avg_salary DESC;`
             
             <Dialog open={showCollaborateDialog} onOpenChange={setShowCollaborateDialog}>
               <DialogTrigger asChild>
+            <Dialog open={showCollaborateDialog} onOpenChange={setShowCollaborateDialog}>
+              <DialogTrigger asChild>
                 <Button variant="ghost" size="sm">
                   <Users className="w-4 h-4 mr-2" />
                   Collaborate
                 </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Active Collaborators</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Team members currently working on this query:
+                  </p>
+                  <div className="space-y-3">
+                    {activeUsers.map((user) => (
+                      <div key={user.id} className="flex items-center space-x-3">
+                        <Avatar className="w-8 h-8">
+                          <AvatarFallback className="text-xs">
+                            {user.avatar}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-sm font-medium">{user.name}</span>
+                            <div className="flex items-center space-x-1">
+                              <Circle className={`w-2 h-2 fill-current ${
+                                user.status === 'online' ? 'text-success' : 'text-warning'
+                              }`} />
+                              <span className="text-xs text-muted-foreground">{user.status}</span>
+                            </div>
+                          </div>
+                          <span className="text-xs text-muted-foreground">{user.lastSeen}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+            
+            <Dialog open={showSQLHelp} onOpenChange={setShowSQLHelp}>
+              <DialogTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <HelpCircle className="w-4 h-4 mr-2" />
+                  SQL Help
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>SQL Formula Instructions</DialogTitle>
+                </DialogHeader>
+                <Tabs defaultValue="basic" className="w-full">
+                  <TabsList className="grid w-full grid-cols-4">
+                    <TabsTrigger value="basic">Basic</TabsTrigger>
+                    <TabsTrigger value="joins">Joins</TabsTrigger>
+                    <TabsTrigger value="functions">Functions</TabsTrigger>
+                    <TabsTrigger value="examples">Examples</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="basic" className="space-y-4 mt-4">
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-medium">Basic SQL Commands</h4>
+                      <div className="grid grid-cols-1 gap-3">
+                        <div className="bg-muted p-3 rounded">
+                          <code className="text-sm">SELECT column1, column2 FROM table_name;</code>
+                          <p className="text-xs text-muted-foreground mt-1">Retrieve data from specific columns</p>
+                        </div>
+                        <div className="bg-muted p-3 rounded">
+                          <code className="text-sm">SELECT * FROM table_name WHERE condition;</code>
+                          <p className="text-xs text-muted-foreground mt-1">Filter data with conditions</p>
+                        </div>
+                        <div className="bg-muted p-3 rounded">
+                          <code className="text-sm">SELECT * FROM table_name ORDER BY column ASC/DESC;</code>
+                          <p className="text-xs text-muted-foreground mt-1">Sort results ascending or descending</p>
+                        </div>
+                        <div className="bg-muted p-3 rounded">
+                          <code className="text-sm">SELECT * FROM table_name LIMIT 10;</code>
+                          <p className="text-xs text-muted-foreground mt-1">Limit number of results returned</p>
+                        </div>
+                      </div>
+                    </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="joins" className="space-y-4 mt-4">
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-medium">JOIN Operations</h4>
+                      <div className="grid grid-cols-1 gap-3">
+                        <div className="bg-muted p-3 rounded">
+                          <code className="text-sm">SELECT * FROM table1 INNER JOIN table2 ON table1.id = table2.id;</code>
+                          <p className="text-xs text-muted-foreground mt-1">Returns only matching records from both tables</p>
+                        </div>
+                        <div className="bg-muted p-3 rounded">
+                          <code className="text-sm">SELECT * FROM table1 LEFT JOIN table2 ON table1.id = table2.id;</code>
+                          <p className="text-xs text-muted-foreground mt-1">Returns all from left table, matched from right</p>
+                        </div>
+                        <div className="bg-muted p-3 rounded">
+                          <code className="text-sm">SELECT * FROM table1 RIGHT JOIN table2 ON table1.id = table2.id;</code>
+                          <p className="text-xs text-muted-foreground mt-1">Returns all from right table, matched from left</p>
+                        </div>
+                      </div>
+                    </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="functions" className="space-y-4 mt-4">
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-medium">SQL Functions</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-muted p-3 rounded">
+                          <code className="text-sm">COUNT(*)</code>
+                          <p className="text-xs text-muted-foreground mt-1">Count rows</p>
+                        </div>
+                        <div className="bg-muted p-3 rounded">
+                          <code className="text-sm">SUM(column)</code>
+                          <p className="text-xs text-muted-foreground mt-1">Sum values</p>
+                        </div>
+                        <div className="bg-muted p-3 rounded">
+                          <code className="text-sm">AVG(column)</code>
+                          <p className="text-xs text-muted-foreground mt-1">Average value</p>
+                        </div>
+                        <div className="bg-muted p-3 rounded">
+                          <code className="text-sm">MAX(column)</code>
+                          <p className="text-xs text-muted-foreground mt-1">Maximum value</p>
+                        </div>
+                        <div className="bg-muted p-3 rounded">
+                          <code className="text-sm">MIN(column)</code>
+                          <p className="text-xs text-muted-foreground mt-1">Minimum value</p>
+                        </div>
+                        <div className="bg-muted p-3 rounded">
+                          <code className="text-sm">DISTINCT</code>
+                          <p className="text-xs text-muted-foreground mt-1">Unique values</p>
+                        </div>
+                      </div>
+                    </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="examples" className="space-y-4 mt-4">
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-medium">Ready-to-Use Examples</h4>
+                      <div className="space-y-3">
+                        <div className="bg-muted p-3 rounded">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium">High Salary Employees</span>
+                            <Button size="sm" variant="ghost" onClick={() => {
+                              setSqlQuery("SELECT first_name, last_name, salary FROM employees WHERE salary > 75000 ORDER BY salary DESC;");
+                              setShowSQLHelp(false);
+                            }}>Use</Button>
+                          </div>
+                          <code className="text-xs">SELECT first_name, last_name, salary FROM employees WHERE salary &gt; 75000 ORDER BY salary DESC;</code>
+                        </div>
+                        <div className="bg-muted p-3 rounded">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium">Department Summary</span>
+                            <Button size="sm" variant="ghost" onClick={() => {
+                              setSqlQuery("SELECT department, COUNT(*) as employee_count, AVG(salary) as avg_salary FROM employees GROUP BY department;");
+                              setShowSQLHelp(false);
+                            }}>Use</Button>
+                          </div>
+                          <code className="text-xs">SELECT department, COUNT(*) as employee_count, AVG(salary) as avg_salary FROM employees GROUP BY department;</code>
+                        </div>
+                        <div className="bg-muted p-3 rounded">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium">Employee with Department Info</span>
+                            <Button size="sm" variant="ghost" onClick={() => {
+                              setSqlQuery("SELECT e.first_name, e.last_name, e.salary, d.name as department, d.budget FROM employees e JOIN departments d ON e.department = d.name;");
+                              setShowSQLHelp(false);
+                            }}>Use</Button>
+                          </div>
+                          <code className="text-xs">SELECT e.first_name, e.last_name, e.salary, d.name as department, d.budget FROM employees e JOIN departments d ON e.department = d.name;</code>
+                        </div>
+                      </div>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </DialogContent>
+            </Dialog>
               </DialogTrigger>
               <DialogContent className="sm:max-w-md">
                 <DialogHeader>
@@ -1198,7 +1438,7 @@ ORDER BY avg_salary DESC;`
                   <textarea
                     className="sql-editor-textarea w-full h-64 bg-transparent border-none outline-none resize-none font-mono text-sm leading-relaxed text-editor-foreground placeholder:text-muted-foreground"
                     value={sqlQuery}
-                    onChange={(e) => setSqlQuery(e.target.value)}
+                    onChange={handleEditorInput}
                     onKeyDown={handleEditorKeyDown}
                     placeholder="Type your SQL query here... 
 
@@ -1218,23 +1458,33 @@ DESCRIBE employees;"
                   {/* Auto-complete popup */}
                   {showAutoComplete && (
                     <div 
-                      className="absolute z-50 bg-popover border border-border rounded-lg shadow-lg max-w-xs"
+                      className="absolute z-50 bg-popover border border-border rounded-lg shadow-lg max-w-xs min-w-48"
                       style={{ 
                         left: Math.min(autoCompletePosition.x, 300),
                         top: autoCompletePosition.y + 20
                       }}
                     >
                       <div className="p-2">
-                        <div className="text-xs text-muted-foreground mb-2 px-2">Suggestions</div>
-                        <div className="space-y-1">
+                        <div className="text-xs text-muted-foreground mb-2 px-2">
+                          Suggestions (↑↓ to navigate, Tab/Enter to select)
+                        </div>
+                        <div className="space-y-1 max-h-48 overflow-y-auto">
                           {autoCompleteSuggestions.map((suggestion, index) => (
                             <button
                               key={index}
-                              className="w-full text-left px-2 py-1 text-sm rounded hover:bg-accent hover:text-accent-foreground flex items-center justify-between"
+                              className={`w-full text-left px-2 py-1 text-sm rounded flex items-center justify-between transition-colors ${
+                                index === selectedSuggestionIndex 
+                                  ? 'bg-primary text-primary-foreground' 
+                                  : 'hover:bg-accent hover:text-accent-foreground'
+                              }`}
                               onClick={() => insertAutoComplete(suggestion)}
+                              onMouseEnter={() => setSelectedSuggestionIndex(index)}
                             >
-                              <span className="font-mono">{suggestion.value}</span>
-                              <Badge variant="outline" className="text-xs ml-2">
+                              <span className="font-mono truncate">{suggestion.value}</span>
+                              <Badge 
+                                variant={index === selectedSuggestionIndex ? "secondary" : "outline"} 
+                                className="text-xs ml-2 flex-shrink-0"
+                              >
                                 {suggestion.type}
                               </Badge>
                             </button>
