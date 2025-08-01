@@ -5,6 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { 
   Play, 
   Save, 
@@ -17,7 +20,11 @@ import {
   Share2,
   Settings,
   Plus,
-  Search
+  Search,
+  MessageCircle,
+  Send,
+  Clock,
+  User
 } from "lucide-react";
 
 const SQLEditor = () => {
@@ -35,13 +42,29 @@ LEFT JOIN departments d ON e.department = d.name
 WHERE e.salary > 75000
 ORDER BY e.salary DESC;`);
 
-  const [activeTab, setActiveTab] = useState("employees");
+  const [showComments, setShowComments] = useState(false);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [queryTitle, setQueryTitle] = useState("");
+  const [queryDescription, setQueryDescription] = useState("");
+  const [newComment, setNewComment] = useState("");
+  const [queryRunning, setQueryRunning] = useState(false);
 
-  const mockEmployees = [
-    { id: 1, first_name: "John", last_name: "Doe", department: "Engineering", salary: 85000 },
-    { id: 2, first_name: "Jane", last_name: "Smith", department: "Marketing", salary: 78000 },
-    { id: 3, first_name: "Bob", last_name: "Johnson", department: "Sales", salary: 82000 },
-  ];
+  const [comments, setComments] = useState([
+    {
+      id: 1,
+      author: "John Doe",
+      time: "2 minutes ago",
+      content: "This query looks good, but we might want to add an index on the salary column for better performance.",
+      type: "suggestion"
+    },
+    {
+      id: 2,
+      author: "Jane Smith",
+      time: "5 minutes ago", 
+      content: "Approved for production use. Great work on the department join!",
+      type: "approval"
+    }
+  ]);
 
   const tableSchemas = {
     employees: [
@@ -62,6 +85,48 @@ ORDER BY e.salary DESC;`);
       { column: "name", type: "varchar(100)", key: "" },
       { column: "description", type: "text", key: "" },
     ]
+  };
+
+  const handleSaveQuery = () => {
+    setShowSaveDialog(true);
+  };
+
+  const handleRunQuery = () => {
+    setQueryRunning(true);
+    setShowComments(true);
+    // Simulate query execution
+    setTimeout(() => {
+      setQueryRunning(false);
+    }, 1500);
+  };
+
+  const handleAddComment = () => {
+    if (newComment.trim()) {
+      const comment = {
+        id: comments.length + 1,
+        author: "Current User",
+        time: "Just now",
+        content: newComment,
+        type: "comment"
+      };
+      setComments([comment, ...comments]);
+      setNewComment("");
+    }
+  };
+
+  const saveQuery = () => {
+    // Handle saving the query with title and description
+    setShowSaveDialog(false);
+    setShowComments(true);
+    // Add a comment about the save
+    const saveComment = {
+      id: comments.length + 1,
+      author: "System",
+      time: "Just now",
+      content: `Query "${queryTitle}" has been saved successfully.`,
+      type: "system"
+    };
+    setComments([saveComment, ...comments]);
   };
 
   return (
@@ -160,13 +225,51 @@ ORDER BY e.salary DESC;`);
                     <Code className="w-4 h-4 mr-2" />
                     Format
                   </Button>
-                  <Button variant="outline" size="sm">
-                    <Save className="w-4 h-4 mr-2" />
-                    Save SQL Statement
-                  </Button>
-                  <Button size="sm">
+                  
+                  <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm" onClick={handleSaveQuery}>
+                        <Save className="w-4 h-4 mr-2" />
+                        Save SQL Statement
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Save SQL Statement</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-sm font-medium">Query Title</label>
+                          <Input 
+                            placeholder="Enter query title..."
+                            value={queryTitle}
+                            onChange={(e) => setQueryTitle(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium">Description</label>
+                          <Textarea 
+                            placeholder="Enter query description and usage instructions..."
+                            value={queryDescription}
+                            onChange={(e) => setQueryDescription(e.target.value)}
+                            rows={3}
+                          />
+                        </div>
+                        <div className="flex justify-end space-x-2">
+                          <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
+                            Cancel
+                          </Button>
+                          <Button onClick={saveQuery}>
+                            Save Query
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+
+                  <Button size="sm" onClick={handleRunQuery} disabled={queryRunning}>
                     <Play className="w-4 h-4 mr-2" />
-                    Run SQL
+                    {queryRunning ? "Running..." : "Run SQL"}
                   </Button>
                 </div>
               </div>
@@ -236,49 +339,92 @@ ORDER BY e.salary DESC;`);
           </div>
         </div>
 
-        {/* Right Panel - Table Data */}
+        {/* Right Panel - Comments */}
         <div className="w-80 border-l bg-card/50 flex flex-col">
           <div className="p-4 border-b">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-medium">Table Data</h3>
+              <h3 className="text-sm font-medium flex items-center">
+                <MessageCircle className="w-4 h-4 mr-2" />
+                Comments & Discussion
+              </h3>
+              {showComments && (
+                <Badge variant="secondary" className="text-xs">
+                  {comments.length}
+                </Badge>
+              )}
             </div>
-            <div className="flex space-x-1 mb-4">
-              {Object.keys(tableSchemas).map((table) => (
-                <Button
-                  key={table}
-                  variant={activeTab === table ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setActiveTab(table)}
-                  className="text-xs"
-                >
-                  {table}
+            
+            {showComments && (
+              <div className="flex space-x-2">
+                <Input
+                  placeholder="Add a comment..."
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  className="text-sm"
+                  onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}
+                />
+                <Button size="sm" onClick={handleAddComment} disabled={!newComment.trim()}>
+                  <Send className="w-4 h-4" />
                 </Button>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
 
           <div className="flex-1 p-4">
-            <Card>
-              <div className="p-4">
-                <h4 className="font-medium mb-3 capitalize">{activeTab}</h4>
-                {activeTab === "employees" ? (
-                  <div className="space-y-3">
-                    {mockEmployees.map((emp) => (
-                      <div key={emp.id} className="text-sm p-2 bg-muted/50 rounded">
-                        <div className="font-medium">{emp.first_name} {emp.last_name}</div>
-                        <div className="text-muted-foreground">{emp.department}</div>
-                        <div className="text-primary">${emp.salary.toLocaleString()}</div>
+            {showComments ? (
+              <ScrollArea className="h-full">
+                <div className="space-y-4">
+                  {comments.map((comment) => (
+                    <Card key={comment.id} className="p-3">
+                      <div className="flex items-start space-x-3">
+                        <Avatar className="w-8 h-8">
+                          <AvatarFallback className="text-xs">
+                            {comment.author.split(' ').map(n => n[0]).join('')}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <span className="text-sm font-medium">{comment.author}</span>
+                            <Badge 
+                              variant={
+                                comment.type === 'approval' ? 'secondary' : 
+                                comment.type === 'suggestion' ? 'outline' :
+                                comment.type === 'system' ? 'secondary' :
+                                'outline'
+                              } 
+                              className={`text-xs ${
+                                comment.type === 'approval' ? 'bg-success text-success-foreground' :
+                                comment.type === 'suggestion' ? 'bg-warning text-warning-foreground border-warning' :
+                                ''
+                              }`}
+                            >
+                              {comment.type}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-2">
+                            {comment.content}
+                          </p>
+                          <div className="flex items-center text-xs text-muted-foreground">
+                            <Clock className="w-3 h-3 mr-1" />
+                            {comment.time}
+                          </div>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                ) : (
+                    </Card>
+                  ))}
+                </div>
+              </ScrollArea>
+            ) : (
+              <Card>
+                <div className="p-4">
                   <div className="text-center text-muted-foreground py-8">
-                    <Table className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p>No data available</p>
+                    <MessageCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p className="mb-2">No comments yet</p>
+                    <p className="text-sm">Save a statement or run a query to start discussing</p>
                   </div>
-                )}
-              </div>
-            </Card>
+                </div>
+              </Card>
+            )}
           </div>
         </div>
       </div>
