@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,8 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/hooks/use-toast";
 import { 
   Play, 
   Save, 
@@ -24,10 +26,17 @@ import {
   MessageCircle,
   Send,
   Clock,
-  User
+  User,
+  Moon,
+  Sun,
+  Code2,
+  Building2,
+  Link,
+  Check
 } from "lucide-react";
 
 const SQLEditor = () => {
+  const { toast } = useToast();
   const [sqlQuery, setSqlQuery] = useState(`-- Advanced SQL Editor with Monaco
 -- Features: Syntax highlighting, auto-completion, formatting
 
@@ -44,10 +53,24 @@ ORDER BY e.salary DESC;`);
 
   const [showComments, setShowComments] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [showAddStatementDialog, setShowAddStatementDialog] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
   const [queryTitle, setQueryTitle] = useState("");
   const [queryDescription, setQueryDescription] = useState("");
   const [newComment, setNewComment] = useState("");
   const [queryRunning, setQueryRunning] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+  const [businessMode, setBusinessMode] = useState(false);
+  const [savedStatements, setSavedStatements] = useState([]);
+
+  // Apply dark mode
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [darkMode]);
 
   const [comments, setComments] = useState([
     {
@@ -91,12 +114,75 @@ ORDER BY e.salary DESC;`);
     setShowSaveDialog(true);
   };
 
+  const handleAddStatement = () => {
+    setShowAddStatementDialog(true);
+  };
+
+  const handleFormatQuery = () => {
+    // Format the SQL query
+    const formatted = sqlQuery
+      .replace(/SELECT/gi, 'SELECT')
+      .replace(/FROM/gi, '\nFROM')
+      .replace(/WHERE/gi, '\nWHERE')
+      .replace(/ORDER BY/gi, '\nORDER BY')
+      .replace(/LEFT JOIN/gi, '\nLEFT JOIN')
+      .replace(/INNER JOIN/gi, '\nINNER JOIN')
+      .replace(/GROUP BY/gi, '\nGROUP BY')
+      .replace(/HAVING/gi, '\nHAVING')
+      .replace(/,\s*/g, ',\n    ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    setSqlQuery(formatted);
+    toast({
+      title: "Query Formatted",
+      description: "SQL statement has been formatted successfully",
+    });
+  };
+
+  const handleExportCSV = () => {
+    // Simulate CSV export
+    const csvContent = "first_name,last_name,department,salary\nJohn,Doe,Engineering,85000\nJane,Smith,Marketing,78000";
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'query_results.csv';
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    
+    toast({
+      title: "CSV Downloaded",
+      description: "Query results exported as CSV file",
+    });
+  };
+
+  const handleShare = () => {
+    setShowShareDialog(true);
+  };
+
+  const generateShareLink = () => {
+    const shareUrl = `https://ddata-sql.lovable.app/shared/${Date.now()}`;
+    navigator.clipboard.writeText(shareUrl);
+    toast({
+      title: "Link Copied",
+      description: "Share link has been copied to clipboard",
+    });
+    setShowShareDialog(false);
+  };
+
   const handleRunQuery = () => {
     setQueryRunning(true);
     setShowComments(true);
     // Simulate query execution
     setTimeout(() => {
       setQueryRunning(false);
+      toast({
+        title: "Query Executed",
+        description: "SQL query ran successfully",
+      });
     }, 1500);
   };
 
@@ -116,8 +202,17 @@ ORDER BY e.salary DESC;`);
 
   const saveQuery = () => {
     // Handle saving the query with title and description
+    const newStatement = {
+      id: savedStatements.length + 1,
+      title: queryTitle,
+      description: queryDescription,
+      query: sqlQuery,
+      createdAt: new Date().toISOString()
+    };
+    setSavedStatements([newStatement, ...savedStatements]);
     setShowSaveDialog(false);
     setShowComments(true);
+    
     // Add a comment about the save
     const saveComment = {
       id: comments.length + 1,
@@ -127,6 +222,36 @@ ORDER BY e.salary DESC;`);
       type: "system"
     };
     setComments([saveComment, ...comments]);
+    
+    toast({
+      title: "Query Saved",
+      description: `"${queryTitle}" has been saved to your statements`,
+    });
+    
+    // Reset form
+    setQueryTitle("");
+    setQueryDescription("");
+  };
+
+  const addNewStatement = () => {
+    const newStatement = {
+      id: savedStatements.length + 1,
+      title: queryTitle || "Untitled Query",
+      description: queryDescription || "No description provided",
+      query: sqlQuery,
+      createdAt: new Date().toISOString()
+    };
+    setSavedStatements([newStatement, ...savedStatements]);
+    setShowAddStatementDialog(false);
+    
+    toast({
+      title: "Statement Added",
+      description: "New SQL statement has been added successfully",
+    });
+    
+    // Reset form
+    setQueryTitle("");
+    setQueryDescription("");
   };
 
   return (
@@ -135,15 +260,39 @@ ORDER BY e.salary DESC;`);
       <header className="border-b bg-card/80 backdrop-blur-sm">
         <div className="flex items-center justify-between px-6 py-4">
           <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <Database className="w-4 h-4 text-primary-foreground" />
+            <div className="flex items-center space-x-3">
+              {/* dData Logo */}
+              <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center font-bold text-lg text-primary-foreground">
+                dP
               </div>
-              <h1 className="text-xl font-semibold">Advanced SQL Editor</h1>
+              <h1 className="text-xl font-semibold">dData SQL Editor</h1>
             </div>
             <Badge variant="secondary">Professional database query environment</Badge>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-4">
+            {/* Mode Toggles */}
+            <div className="flex items-center space-x-2">
+              <Code2 className="w-4 h-4 text-muted-foreground" />
+              <Switch
+                checked={businessMode}
+                onCheckedChange={setBusinessMode}
+              />
+              <Building2 className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">
+                {businessMode ? 'Business Mode' : 'Developer Mode'}
+              </span>
+            </div>
+            
+            {/* Dark Mode Toggle */}
+            <div className="flex items-center space-x-2">
+              <Sun className="w-4 h-4 text-muted-foreground" />
+              <Switch
+                checked={darkMode}
+                onCheckedChange={setDarkMode}
+              />
+              <Moon className="w-4 h-4 text-muted-foreground" />
+            </div>
+            
             <Button variant="ghost" size="sm">
               <Users className="w-4 h-4 mr-2" />
               Collaborate
@@ -165,9 +314,45 @@ ORDER BY e.salary DESC;`);
                 <FileText className="w-4 h-4 mr-2" />
                 Saved Statements
               </h3>
-              <Button variant="ghost" size="sm">
-                <Plus className="w-4 h-4" />
-              </Button>
+              <Dialog open={showAddStatementDialog} onOpenChange={setShowAddStatementDialog}>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="sm" onClick={handleAddStatement}>
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Add New Statement</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium">Query Title</label>
+                      <Input 
+                        placeholder="Enter query title..."
+                        value={queryTitle}
+                        onChange={(e) => setQueryTitle(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Description</label>
+                      <Textarea 
+                        placeholder="Enter query description..."
+                        value={queryDescription}
+                        onChange={(e) => setQueryDescription(e.target.value)}
+                        rows={3}
+                      />
+                    </div>
+                    <div className="flex justify-end space-x-2">
+                      <Button variant="outline" onClick={() => setShowAddStatementDialog(false)}>
+                        Cancel
+                      </Button>
+                      <Button onClick={addNewStatement}>
+                        Add Statement
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
             <div className="text-sm text-muted-foreground">
               No saved statements yet
@@ -221,7 +406,7 @@ ORDER BY e.salary DESC;`);
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-medium">SQL Query Editor</h2>
                 <div className="flex items-center space-x-2">
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={handleFormatQuery}>
                     <Code className="w-4 h-4 mr-2" />
                     Format
                   </Button>
@@ -315,14 +500,38 @@ ORDER BY e.salary DESC;`);
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-medium">Query Results</h3>
                 <div className="flex items-center space-x-2">
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={handleExportCSV}>
                     <Download className="w-4 h-4 mr-2" />
                     Export CSV
                   </Button>
-                  <Button variant="outline" size="sm">
-                    <Share2 className="w-4 h-4 mr-2" />
-                    Share
-                  </Button>
+                  
+                  <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm" onClick={handleShare}>
+                        <Share2 className="w-4 h-4 mr-2" />
+                        Share
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Share Query</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <p className="text-sm text-muted-foreground">
+                          Generate a shareable link for this query that your team can access.
+                        </p>
+                        <div className="flex justify-end space-x-2">
+                          <Button variant="outline" onClick={() => setShowShareDialog(false)}>
+                            Cancel
+                          </Button>
+                          <Button onClick={generateShareLink}>
+                            <Link className="w-4 h-4 mr-2" />
+                            Generate Link
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 </div>
               </div>
 
