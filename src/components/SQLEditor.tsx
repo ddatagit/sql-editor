@@ -53,10 +53,7 @@ import {
 
 const SQLEditor = () => {
   const { toast } = useToast();
-  const [sqlQuery, setSqlQuery] = useState(`-- Advanced SQL Editor with Monaco
--- Features: Syntax highlighting, auto-completion, formatting
-
-SELECT e.first_name,e.last_name,e.department,e.salary,d.budget as department_budget FROM employees e LEFT JOIN departments d ON e.department = d.name WHERE e.salary > 75000 ORDER BY e.salary DESC;`);
+  const [sqlQuery, setSqlQuery] = useState("");
 
   const [showComments, setShowComments] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
