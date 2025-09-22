@@ -600,7 +600,7 @@ ORDER BY team_size DESC;`
   };
 
   const generateShareLink = () => {
-    const shareUrl = `https://ddata-sql.lovable.app/shared/${Date.now()}`;
+    const shareUrl = `https://sql-editor-dev.com/shared/${Date.now()}`;
     navigator.clipboard.writeText(shareUrl);
     toast({
       title: "Link Copied",
